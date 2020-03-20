@@ -1,2 +1,4 @@
 simpy
 pylint
+numpy
+plotly
