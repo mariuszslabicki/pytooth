@@ -1,26 +1,25 @@
 import random
-import simpy
 from pytooth import packet
 
 class Advertiser(object):
-    def __init__(self, env, id, scanners_list, events_map):
+    def __init__(self, id, env, events_list, network):
         self.id = id
         self.env = env
-        self.scanners_list = scanners_list
         self.packets_sent = 0
-        self.action = env.process(self.main_loop())  # starts the run() method as a SimPy process
+        self.action = env.process(self.main_loop())
         self.received_packet = False
         self.receiving_now = False
-        self.events_map = events_map
+        self.events_list = events_list
+        self.network = network
 
     def main_loop(self):
         counter = 0
         while True:
             yield self.env.timeout(random.expovariate(0.01))
             for channel in range(37, 40):
-                pkt = packet.Packet(self.id, window_id = channel)
+                pkt = packet.Packet(self.id, channel = channel)
                 
-                yield self.env.process(self.transmit(pkt))
+                yield self.env.process(self.transmit(pkt, channel))
 
                 yield self.env.process(self.switch())
 
@@ -29,7 +28,7 @@ class Advertiser(object):
                 #     yield self.env.process(self.listen())
                 # except simpy.Interrupt:
                 #     print("Odbieram wiadomosc")
-                yield self.env.process(self.listen())
+                yield self.env.process(self.listen(channel))
                 self.receiving_now = False
 
                 # if channel != 39:
@@ -41,37 +40,36 @@ class Advertiser(object):
             if counter == 4:
                 break
     
-    def transmit(self, pkt):
-        print(str(self.env.now) + " Wchodze w stan transmit")
+    def transmit(self, pkt, channel):
         now = self.env.now
-        # self.scanner.begin_reception(pkt)
+        self.network.beginTransmissionToScanners(pkt)
         yield self.env.timeout(0.176)
-        # self.scanner.end_reception(pkt)
-        self.events_map.append(dict(Task=self.id, Start=now, Finish=self.env.now, Resource='Tx', Description='Transmit'))
-        print(str(self.env.now) + " Wychodze ze stanu transmit")
+        self.network.finishTransmissionToScanners(pkt)
+        if channel == 37:
+            self.events_list.append(dict(Task=self.id, Start=now, Finish=self.env.now, Resource='ch37', Description='Transmit'))
+        if channel == 38:
+            self.events_list.append(dict(Task=self.id, Start=now, Finish=self.env.now, Resource='ch38', Description='Transmit'))
+        if channel == 39:
+            self.events_list.append(dict(Task=self.id, Start=now, Finish=self.env.now, Resource='ch39', Description='Transmit'))
 
     def switch(self):
-        print(str(self.env.now) + "Wchodze w stan switch")
-        now = self.env.now
         yield self.env.timeout(0.150)
-        self.events_map.append(dict(Task=self.id, Start=now, Finish=self.env.now, Resource='Switch', Description='Switch'))
-        print(str(self.env.now) + "Wychodze ze stanu switch")
 
-    def listen(self):
-        print(str(self.env.now) + "Wchodze w stan listen")
+    def listen(self, channel):
         now = self.env.now
-        yield self.env.timeout(0.05)
-        self.events_map.append(dict(Task=self.id, Start=now, Finish=self.env.now, Resource='Rx', Description='Listen'))
-        print(str(self.env.now) + "Wychodze ze stanu listen")
+        yield self.env.timeout(0.06)
+        if channel == 37:
+            self.events_list.append(dict(Task=self.id, Start=now, Finish=self.env.now, Resource='ch37', Description='Listen'))
+        if channel == 38:
+            self.events_list.append(dict(Task=self.id, Start=now, Finish=self.env.now, Resource='ch38', Description='Listen'))
+        if channel == 39:
+            self.events_list.append(dict(Task=self.id, Start=now, Finish=self.env.now, Resource='ch39', Description='Listen'))
 
     def standby(self):
-        print(str(self.env.now) + "Wchodze w stan standby")
-        # now = self.env.now
         yield self.env.timeout(4)
-        # self.events_map.append(dict(Task=self.id, Start=now, Finish=self.env.now, Resource='Standby'))
-        print(str(self.env.now) + "Wychodze ze stanu standby")
 
     def receive_packet(self):
+        print("Cos odebralem")
         self.action.interrupt()
         yield self.env.timeout(0.1)
         

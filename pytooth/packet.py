@@ -1,4 +1,4 @@
 class Packet(object):
-    def __init__(self, src_id, window_id):
+    def __init__(self, src_id, channel):
         self.src_id = src_id
-        self.window_id = window_id
+        self.channel = channel
