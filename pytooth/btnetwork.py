@@ -23,19 +23,19 @@ class BTNetwork(object):
     def evaluateNetwork(self):
         self.env.run(1200)
 
-    def beginTransmissionToScanners(self, pkt):
+    def deliverPacket(self, pkt):
+        print("Wchodze w deliver packet w network")
         for scanner in self.scanners:
-            scanner.begin_reception(pkt)
-
-    def finishTransmissionToScanners(self, pkt):
-        for scanner in self.scanners:
-            scanner.end_reception(pkt)
+            print("Petla")
+            scanner.deliver(pkt)
+            print("Po petli")
 
     def drawTimeline(self):
         colors = {
         'ch37': 'rgb(109,159,84)',
         'ch38': 'rgb(217,193,89)',
-        'ch39': 'rgb(230,126,38)'}
+        'ch39': 'rgb(230,126,38)',
+        'noise': 'rgb(105,105,105)'}
 
         for event in self.events_list:
             event["Start"] = datetime.fromtimestamp(event["Start"]/1000.0)

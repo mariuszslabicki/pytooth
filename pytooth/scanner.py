@@ -1,4 +1,13 @@
 import simpy
+from enum import Enum
+
+class ScannerState(Enum):
+    LISTEN = 1
+    RX = 2
+    TX = 3
+    IDLE = 4
+    SWITCH = 5
+    NOISE = 6
 
 class Scanner(object):
     def __init__(self, id, env, events_list, network):
@@ -7,70 +16,71 @@ class Scanner(object):
         self.received = 0
         self.lost = 0
         self.ongoing_receptions = {}
-        self.ongoing_transmission = False
+        self.ongoing_transmissions = 0
         self.action = env.process(self.main_loop())
         self.channel = None
         self.events_list = events_list
         self.network = network
+        self.state = ScannerState.LISTEN
+        self.receiving_packet = None
 
     def main_loop(self):
         while True:
-            self.channel = 37
-            end_window = self.env.now + 500
-            while self.env.now < end_window:
+            if self.state == ScannerState.LISTEN:
+                self.channel = 37
+                begin = self.env.now
+                end_window = self.env.now + 500
+                while self.env.now < end_window:
+                    try:
+                        yield self.env.process(self.scan(self.channel, end_window - self.env.now))
+                    except simpy.Interrupt:
+                        self.state = ScannerState.RX
+                        break
+                self.events_list.append(dict(Task="SCANNER", Start=begin, Finish=self.env.now, Resource='ch37', Description='Listen'))
+            if self.state == ScannerState.RX:
+                start = self.env.now
                 try:
-                    yield self.env.process(self.listen(self.channel, end_window - self.env.now))
+                    yield self.env.process(self.receive())
+                    self.state = ScannerState.LISTEN
                 except simpy.Interrupt:
-                    continue
-
-            self.channel = 38
-            end_window = self.env.now + 500
-            while self.env.now < end_window:
+                    self.state = ScannerState.NOISE
+                self.events_list.append(dict(Task="SCANNER", Start=start, Finish=self.env.now, Resource='ch39', Description='Rx'))
+            if self.state == ScannerState.NOISE:
+                start = self.env.now
                 try:
-                    yield self.env.process(self.listen(self.channel, end_window - self.env.now))
+                    yield self.env.process(self.processInterference())
+                    self.state = ScannerState.LISTEN
                 except simpy.Interrupt:
-                    continue
+                    self.state = ScannerState.NOISE
+                self.events_list.append(dict(Task="SCANNER", Start=start, Finish=self.env.now, Resource='noise', Description='Interference'))
 
-            self.channel = 39
-            end_window = self.env.now + 500
-            while self.env.now < end_window:
-                try:
-                    yield self.env.process(self.listen(self.channel, end_window - self.env.now))
-                except simpy.Interrupt:
-                    continue
+    def deliver(self, packet):
+        if self.state == ScannerState.NOISE:
+            self.action.interrupt()
+        if self.state == ScannerState.RX:
+            self.action.interrupt()
+        if self.state == ScannerState.LISTEN and self.channel == packet.channel:
+            self.receiving_packet = packet
+            self.action.interrupt()
 
-    def listen(self, channel, how_long):
-        now = self.env.now
+    def scan(self, channel, how_long):
+        self.state = ScannerState.LISTEN
         yield self.env.timeout(how_long)
-        if channel == 37:
-            self.events_list.append(dict(Task="SCANNER", Start=now, Finish=self.env.now, Resource='ch37', Description='Listen'))
-        if channel == 38:
-            self.events_list.append(dict(Task="SCANNER", Start=now, Finish=self.env.now, Resource='ch38', Description='Listen'))
-        if channel == 39:
-            self.events_list.append(dict(Task="SCANNER", Start=now, Finish=self.env.now, Resource='ch39', Description='Listen'))
 
-    def begin_reception(self, packet):
-        self.ongoing_receptions[packet.src_id] = True
-        self.action.interrupt()
-        if self.channel == packet.channel:
-            now = self.env.now
-            self.events_list.append(dict(Task="SCANNER", Start=now, Finish=now+0.176, Resource='ch39', Description='Rx'))
-        if len(self.ongoing_receptions) > 1:
-            for key in self.ongoing_receptions:
-                self.ongoing_receptions[key] = False
+    def processInterference(self):
+        self.ongoing_transmissions += 1
+        yield self.env.timeout(0.176)
+        self.lost += 1
+        self.ongoing_transmissions -= 1
 
-    def end_reception(self, packet):
-        if self.ongoing_receptions[packet.src_id] == True and self.channel == packet.channel:
+    def receive(self):
+        self.ongoing_transmissions += 1
+        yield self.env.timeout(0.176)
+        if self.ongoing_transmissions == 1 and self.channel == self.receiving_packet.channel:
             self.received += 1
-            self.sendRequestTo(packet.src_id)
+            self.ongoing_transmissions = 0
         else:
             self.lost += 1
-        del self.ongoing_receptions[packet.src_id]
-
-    def sendRequestTo(self, src_id):
-        now = self.env.now
-        self.network.advertisers[src_id].receive_packet()
-        self.events_list.append(dict(Task="SCANNER", Start=now+0.150, Finish=now+0.150+0.176, Resource='ch39', Description='Tx'))
 
     def print_summary(self):
         print("Received correct", self.received)
