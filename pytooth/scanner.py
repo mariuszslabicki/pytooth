@@ -23,10 +23,12 @@ class Scanner(object):
         self.network = network
         self.state = ScannerState.LISTEN
         self.receiving_packet = None
+        self.debug_mode = False
 
     def main_loop(self):
         while True:
             if self.state == ScannerState.LISTEN:
+                self.debug_info()
                 self.channel = 37
                 begin = self.env.now
                 end_window = self.env.now + 500
@@ -36,16 +38,20 @@ class Scanner(object):
                     except simpy.Interrupt:
                         self.state = ScannerState.RX
                         break
-                self.events_list.append(dict(Task="SCANNER", Start=begin, Finish=self.env.now, Resource='ch37', Description='Listen'))
+                self.events_list.append(dict(Task="SCANNER", Start=begin, Finish=self.env.now, Resource='ch37_free', Description='Listen'))
+
             if self.state == ScannerState.RX:
+                self.debug_info()
                 start = self.env.now
                 try:
                     yield self.env.process(self.receive())
                     self.state = ScannerState.LISTEN
                 except simpy.Interrupt:
                     self.state = ScannerState.NOISE
-                self.events_list.append(dict(Task="SCANNER", Start=start, Finish=self.env.now, Resource='ch39', Description='Rx'))
+                self.events_list.append(dict(Task="SCANNER", Start=start, Finish=self.env.now, Resource='ch37_msg', Description='Rx'))
+
             if self.state == ScannerState.NOISE:
+                self.debug_info()
                 start = self.env.now
                 try:
                     yield self.env.process(self.processInterference())
@@ -53,6 +59,7 @@ class Scanner(object):
                 except simpy.Interrupt:
                     self.state = ScannerState.NOISE
                 self.events_list.append(dict(Task="SCANNER", Start=start, Finish=self.env.now, Resource='noise', Description='Interference'))
+
 
     def deliver(self, packet):
         if self.state == ScannerState.NOISE:
@@ -83,5 +90,9 @@ class Scanner(object):
             self.lost += 1
 
     def print_summary(self):
-        print("Received correct", self.received)
-        print("Lost", self.lost)
+        print("Scanner: Received correct", self.received)
+        print("Scanner: Lost", self.lost)
+
+    def debug_info(self):
+        if self.debug_mode is True:
+            print("SC State", self.state, "at", self.env.now)
