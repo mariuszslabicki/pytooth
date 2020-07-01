@@ -20,8 +20,8 @@ class BTNetwork(object):
         for i in range(number):
             self.advertisers.append(pytooth.advertiser.Advertiser(i, self.env, self.events_list, self))
 
-    def evaluateNetwork(self):
-        self.env.run(1200)
+    def evaluateNetwork(self, time=10000):
+        self.env.run(time)
 
     def deliverPacket(self, pkt):
         for scanner in self.scanners:
