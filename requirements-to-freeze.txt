@@ -1,4 +1,0 @@
-simpy
-pylint
-numpy
-plotly
