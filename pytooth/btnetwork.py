@@ -26,6 +26,8 @@ class BTNetwork(object):
     def deliverPacket(self, pkt):
         for scanner in self.scanners:
             scanner.deliver(pkt)
+        for advertiser in self.advertisers:
+            advertiser.deliver(pkt)
 
     def drawTimeline(self):
         colors = {
