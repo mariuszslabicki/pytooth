@@ -5,13 +5,17 @@ from pytooth import packet
 import pytooth.constants as const
 
 class AdvState(Enum):
-    TX = 1
-    TIFS = 2
-    RX = 3
-    DETECT = 4
-    NOISE = 5
-    IDLE = 6
-    INIT = 7
+    IDLE = 1
+    TX_ADV = 2
+    TX_SCAN_RESP = 3
+    RX = 4
+    DETECT = 5
+    INIT_DELAY = 6
+    RADIO_START_DELAY = 7
+    RADIO_SWITCH_DELAY1 = 8
+    STANDBY_DELAY = 9
+    POSTPROCESSING_DELAY = 10
+    RADIO_SWITCH_DELAY2 = 11
 
 class Advertiser(object):
     def __init__(self, id, env, events_list, network):
@@ -21,9 +25,10 @@ class Advertiser(object):
         self.action = env.process(self.main_loop())
         self.received_packet = None
         self.receiving_now = False
+        self.ongoing_receptions = 0
         self.events_list = events_list
         self.network = network
-        self.state = AdvState.INIT
+        self.state = AdvState.INIT_DELAY
         self.beginAt = 100*self.id + 100
         self.channel = 37
         self.debug_mode = False
@@ -32,28 +37,28 @@ class Advertiser(object):
     def main_loop(self):
         counter = 0
         while True:
-            if self.state == AdvState.INIT:
+            if self.state == AdvState.INIT_DELAY:
                 self.debug_info("begin")
-                yield self.env.timeout(self.beginAt)
+                yield self.env.timeout(const.T_init_delay)
                 self.debug_info("end")
-                self.state = AdvState.IDLE
+                self.state = AdvState.RADIO_START_DELAY
 
-            if self.state == AdvState.IDLE:
+            if self.state == AdvState.RADIO_START_DELAY:
                 self.debug_info("begin")
-                yield self.env.process(self.standby())
+                yield self.env.timeout(const.T_radio_start_delay)
                 self.debug_info("end")
-                self.state = AdvState.TX
+                self.state = AdvState.TX_ADV
 
-            if self.state == AdvState.TX:
+            if self.state == AdvState.TX_ADV:
                 self.debug_info("begin")
                 pkt = packet.Packet(self.id, channel = self.channel, type=packet.PktType.ADV_SCAN_IND)
-                yield self.env.process(self.transmit(pkt, self.channel))
+                yield self.env.process(self.transmit(pkt))
                 self.debug_info("end")
-                self.state = AdvState.TIFS
+                self.state = AdvState.RADIO_SWITCH_DELAY1
                 
-            if self.state == AdvState.TIFS:
+            if self.state == AdvState.RADIO_SWITCH_DELAY1:
                 self.debug_info("begin")
-                yield self.env.process(self.switch())
+                yield self.env.timeout(const.T_ifs_advertiser)
                 self.debug_info("end")
                 self.state = AdvState.DETECT
 
@@ -61,36 +66,46 @@ class Advertiser(object):
                 self.debug_info("begin")
                 try:
                     yield self.env.process(self.detect(self.channel))
+                    self.debug_info("end")
                     if self.channel == 39:
-                        self.debug_info("end")
-                        self.state = AdvState.IDLE
+                        self.state = AdvState.POSTPROCESSING_DELAY
                         self.channel = 37
                     else:
-                        self.debug_info("end")
-                        self.state = AdvState.IDLE
+                        self.state = AdvState.STANDBY_DELAY
                         self.channel += 1
                 except simpy.Interrupt:
                     self.debug_info("break")
-                    self.state = AdvState.RX
+                    if self.ongoing_receptions == 1:
+                        self.state = AdvState.RX
+                    else:
+                        pass
+                    # RX fail
                     break
+
+            if self.state == AdvState.POSTPROCESSING_DELAY:
+                self.debug_info("begin")
+                yield self.env.timeout(const.T_postprocessing_delay)
+                self.debug_info("end")
+                self.state = AdvState.IDLE
+            
+            if self.state == AdvState.STANDBY_DELAY:
+                self.debug_info("begin")
+                yield self.env.timeout(const.T_standby_delay)
+                self.debug_info("end")
+                self.state = AdvState.RADIO_START_DELAY
+
+            if self.state == AdvState.IDLE:
+                self.debug_info("begin")
+                yield self.env.timeout(1000)
+                self.debug_info("end")
+                self.state = AdvState.INIT_DELAY
 
             if self.state == AdvState.RX:
                 self.debug_info("begin")
                 self.receiving_now = True
                 try:
                     yield self.env.process(self.receive(self.channel))
-                    self.state = AdvState.IDLE
-                    self.debug_info("end")
-                except simpy.Interrupt:
-                    self.state = AdvState.NOISE
-                    self.time_to_end_rx = 0.1
-                    self.debug_info("break")
-                    break
-
-            if self.state == AdvState.NOISE:
-                self.debug_info("begin")
-                try:
-                    yield self.env.process(self.wait_noise(self.time_to_end_rx))
+                    print("Odebralem pakiet w advertiserze")
                     self.state = AdvState.IDLE
                     self.debug_info("end")
                 except simpy.Interrupt:
@@ -101,49 +116,36 @@ class Advertiser(object):
 
             counter += 1
     
-    def deliver(self, packet):
-        if self.state == AdvState.NOISE:
-            self.action.interrupt()
-        if self.state == AdvState.RX:
-            self.action.interrupt()
-        if self.state == AdvState.DETECT and self.channel == packet.channel:
-            self.receiving_packet = packet
-            self.action.interrupt()
+    def beginReception(self, packet):
+        print("Zaczynam odbior w advertiserze")
+        if self.channel == packet.channel:
+            self.ongoing_receptions += 1
+            if self.state == AdvState.DETECT:
+                self.receiving_packet = packet
+                self.action.interrupt()
 
-    def transmit(self, pkt, channel):
-        now = self.env.now
-        self.state = AdvState.TX
+    def endReception(self, packet):
+        print("Koncze odbior w advertiserze")
+        if self.channel == packet.channel:
+            self.ongoing_receptions -= 1
+            # if self.state == ScannerState.RX:
+            #     self.action.interrupt()
+            if self.state == AdvState.RX:
+                self.action.interrupt()
+                self.received_packet = packet
+
+    def transmit(self, pkt):
+        self.network.beginReceptionInDevices(pkt)
         yield self.env.timeout(const.T_advind)
-        self.network.deliverPacket(pkt)
-        if channel == 37:
-            self.events_list.append(dict(Task=self.id, Start=now, Finish=self.env.now, Resource='ch37_msg', Description='Transmit'))
-        if channel == 38:
-            self.events_list.append(dict(Task=self.id, Start=now, Finish=self.env.now, Resource='ch38_msg', Description='Transmit'))
-        if channel == 39:
-            self.events_list.append(dict(Task=self.id, Start=now, Finish=self.env.now, Resource='ch39_msg', Description='Transmit'))
-
-    def switch(self):
-        self.state = AdvState.TIFS
-        yield self.env.timeout(const.T_ifs)
+        self.network.endReceptionInDevices(pkt)
 
     def detect(self, channel):
-        now = self.env.now
         yield self.env.timeout(const.T_detect)
-        if channel == 37:
-            self.events_list.append(dict(Task=self.id, Start=now, Finish=self.env.now, Resource='ch37_free', Description='Listen'))
-        if channel == 38:
-            self.events_list.append(dict(Task=self.id, Start=now, Finish=self.env.now, Resource='ch38_free', Description='Listen'))
-        if channel == 39:
-            self.events_list.append(dict(Task=self.id, Start=now, Finish=self.env.now, Resource='ch39_free', Description='Listen'))
 
     def listen(self, channel):
         yield self.env.timeout(const.T_scanreq)
 
-    def wait_noise(self, time_to_end):
-        yield self.env.timeout(time_to_end)
-
     def standby(self):
-        self.state = AdvState.IDLE
         # yield self.env.timeout(random.expovariate(0.01))
         yield self.env.timeout(4000)
 
@@ -154,7 +156,7 @@ class Advertiser(object):
     def debug_info(self, state):
         if self.debug_mode is True:
             channel = ""
-            if self.state is AdvState.DETECT or self.state is AdvState.TX or self.state is AdvState.RX:
+            if self.state is AdvState.DETECT or self.state is AdvState.TX_ADV or self.state is AdvState.TX_SCAN_RESP or self.state is AdvState.RX:
                 channel = " " + str(self.channel)
             if state == "begin":
                 print("ADV", self.id, "State", str(self.state) + channel, "\t\tbegin\t", self.env.now)

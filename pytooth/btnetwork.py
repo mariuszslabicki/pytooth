@@ -4,6 +4,7 @@ import plotly.figure_factory as ff
 import numpy as np
 import pytooth.advertiser
 import pytooth.scanner
+from pytooth import packet
 
 class BTNetwork(object):
     def __init__(self):
@@ -23,11 +24,21 @@ class BTNetwork(object):
     def evaluateNetwork(self, time=10000):
         self.env.run(time)
 
-    def deliverPacket(self, pkt):
+    def beginReceptionInDevices(self, pkt):
         for scanner in self.scanners:
-            scanner.deliver(pkt)
+            scanner.beginReception(pkt)
         for advertiser in self.advertisers:
-            advertiser.deliver(pkt)
+            if pkt.type == packet.PktType.ADV_SCAN_IND and pkt.src_id == advertiser.id:
+                continue
+            advertiser.beginReception(pkt)
+
+    def endReceptionInDevices(self, pkt):
+        for scanner in self.scanners:
+            scanner.endReception(pkt)
+        for advertiser in self.advertisers:
+            if pkt.type == packet.PktType.ADV_SCAN_IND and pkt.src_id == advertiser.id:
+                continue
+            advertiser.endReception(pkt)
 
     def drawTimeline(self):
         colors = {

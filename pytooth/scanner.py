@@ -6,10 +6,15 @@ import pytooth.constants as const
 class ScannerState(Enum):
     SCAN = 1
     RX = 2
-    TIFS = 3
-    TX = 4
-    IDLE = 5
-    NOISE = 6
+    TX = 3
+    COLISION = 4
+    T_IFS_DELAY1 = 5
+    T_IFS_DELAY2 = 6
+    W_DELAY = 7
+    DECODING_DELAY = 8
+    ERROR_DECODING_DELAY = 9
+    MAX_DELAY = 10
+    FREQ_CHANGE_DELAY = 11
 
 class Scanner(object):
     def __init__(self, id, env, events_list, network):
@@ -17,34 +22,32 @@ class Scanner(object):
         self.id = id
         self.received = 0
         self.lost = 0
-        self.ongoing_receptions = {}
-        self.ongoing_transmissions = 0
         self.action = env.process(self.main_loop())
         self.channel = 37
-        self.events_list = events_list
         self.network = network
         self.state = ScannerState.SCAN
         self.receiving_packet = None
-        self.endtime_scan = None
-        self.replying = False
+        self.ongoing_receptions = 0
+        self.freq_change_time = None
+        self.scan_started = False
         self.debug_mode = False
-        self.temp_to_remove = 0
 
     def main_loop(self):
         while True:
             if self.state == ScannerState.SCAN:
                 self.debug_info("begin")
-                self.endtime_scan = self.env.now + const.T_scanwindow
+                if self.scan_started is False:
+                    self.freq_change_time = self.env.now + const.T_scanwindow
+                    self.scan_started = True
 
                 try:
-                    yield self.env.process(self.scan(self.channel, self.endtime_scan))
+                    yield self.env.process(self.scan(self.channel, self.freq_change_time))
                     self.debug_info("end")
-                    self.state = ScannerState.IDLE
+                    self.state = ScannerState.FREQ_CHANGE_DELAY
 
                 except simpy.Interrupt:
                     self.debug_info("break")
                     self.state = ScannerState.RX
-                    break
 
             if self.state == ScannerState.RX:
                 self.debug_info("begin")
@@ -52,36 +55,50 @@ class Scanner(object):
                     yield self.env.process(self.receive())
                     self.debug_info("end")
                     if self.receiving_packet.type == packet.PktType.ADV_SCAN_IND:
-                        self.state = ScannerState.TIFS
+                        self.state = ScannerState.T_IFS_DELAY1
+                        print("Odebralem pakiet w skanerze")
                         self.receiving_packet = None
                 except simpy.Interrupt:
-                    self.state = ScannerState.NOISE
+                    self.debug_info("break")
+                    self.state = ScannerState.COLISION
 
-            if self.state == ScannerState.TIFS:
+            if self.state == ScannerState.FREQ_CHANGE_DELAY:
                 self.debug_info("begin")
-                yield self.env.timeout(const.T_ifs)
+                yield self.env.timeout(const.T_freq_change_delay)
+                self.scan_started = False
+                self.channel += 1
+                if self.channel == 40:
+                    self.channel = 37
                 self.debug_info("end")
-                if self.replying is True:
-                    self.state = ScannerState.TX
-                if self.replying is False:
-                    self.state = ScannerState.SCAN
+                self.state = ScannerState.SCAN
+
+            if self.state == ScannerState.T_IFS_DELAY1:
+                self.debug_info("begin")
+                yield self.env.timeout(const.T_ifs_scanner)
+                self.debug_info("end")
+                self.state = ScannerState.TX
 
             if self.state == ScannerState.TX:
                 self.debug_info("begin")
                 pkt = packet.Packet(self.id, channel = self.channel, type=packet.PktType.SCAN_REQ)
-                self.transmit(pkt)
-                self.replying = False
+                yield self.env.process(self.transmit(pkt))
                 self.debug_info("end")
-                self.state = ScannerState.TIFS
+                self.state = ScannerState.T_IFS_DELAY2
 
-            if self.state == ScannerState.IDLE:
+            if self.state == ScannerState.T_IFS_DELAY2:
                 self.debug_info("begin")
-                yield self.env.process(self.idle(const.T_scaninterval - const.T_scanwindow))
-                self.channel += 1
-                if self.channel > 39:
-                    self.channel = 37
+                yield self.env.timeout(const.T_ifs_scanner)
                 self.debug_info("end")
                 self.state = ScannerState.SCAN
+
+            # if self.state == ScannerState.IDLE:
+            #     self.debug_info("begin")
+            #     yield self.env.process(self.idle(const.T_scaninterval - const.T_scanwindow))
+            #     self.channel += 1
+            #     if self.channel > 39:
+            #         self.channel = 37
+            #     self.debug_info("end")
+            #     self.state = ScannerState.SCAN
 
             # if self.state == ScannerState.NOISE:
             #     self.debug_info()
@@ -93,41 +110,35 @@ class Scanner(object):
             #         self.state = ScannerState.NOISE
             #     self.events_list.append(dict(Task="SCANNER", Start=start, Finish=self.env.now, Resource='noise', Description='Interference'))
 
+    def beginReception(self, packet):
+        if self.channel == packet.channel:
+            self.ongoing_receptions += 1
+            if self.state == ScannerState.SCAN:
+                self.receiving_packet = packet
+                self.action.interrupt()
+            if self.state == ScannerState.COLISION:
+                self.action.interrupt()
 
-    def deliver(self, packet):
-        if self.state == ScannerState.NOISE:
-            self.action.interrupt()
-        if self.state == ScannerState.RX:
-            self.action.interrupt()
-        if self.state == ScannerState.SCAN and self.channel == packet.channel:
-            self.receiving_packet = packet
-            self.action.interrupt()
+    def endReception(self, packet):
+        if self.channel == packet.channel:
+            self.ongoing_receptions -= 1
+            # if self.state == ScannerState.RX:
+            #     self.action.interrupt()
+            if self.state == ScannerState.COLISION:
+                self.action.interrupt()
 
     def scan(self, channel, end_time):
-        how_long = self.endtime_scan - self.env.now
-        yield self.env.timeout(how_long)
-
-    def idle(self, how_long):
+        how_long = end_time - self.env.now
         yield self.env.timeout(how_long)
 
     def transmit(self, pkt):
+        self.network.beginReceptionInDevices(pkt)
         yield self.env.timeout(const.T_scanreq)
-        self.network.deliverPacket(pkt)
-
-    def processInterference(self):
-        self.ongoing_transmissions += 1
-        yield self.env.timeout(0.176)
-        self.lost += 1
-        self.ongoing_transmissions -= 1
+        self.network.endReceptionInDevices(pkt)
 
     def receive(self):
-        self.ongoing_transmissions += 1
-        yield self.env.timeout(const.T_advind)
-        if self.ongoing_transmissions == 1 and self.channel == self.receiving_packet.channel:
-            self.received += 1
-            self.ongoing_transmissions = 0
-        else:
-            self.lost += 1
+        if self.receiving_packet.type == packet.PktType.ADV_SCAN_IND:
+            yield self.env.timeout(const.T_advind)
 
     def print_summary(self):
         print("Scanner: Received correct", self.received)
