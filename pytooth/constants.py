@@ -1,5 +1,5 @@
 T_ifs_scanner = 150                   # 150 microseconds
-T_ifs_advertiser = 159
+T_ifs_advertiser = 150          # Maciek said to set it for 159
 T_advind = 176                # 176 microseconds
 T_scanreq = 176               # 176 microseconds
 T_scanresp = 152              # 152 microseconds

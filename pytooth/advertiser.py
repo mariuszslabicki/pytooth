@@ -80,7 +80,7 @@ class Advertiser(object):
                     else:
                         pass
                     # RX fail
-                    break
+                    continue
 
             if self.state == AdvState.POSTPROCESSING_DELAY:
                 self.debug_info("begin")
@@ -109,15 +109,33 @@ class Advertiser(object):
                     self.state = AdvState.IDLE
                     self.debug_info("end")
                 except simpy.Interrupt:
-                    self.state = AdvState.NOISE
-                    self.time_to_end_rx = 0.1
                     self.debug_info("break")
-                    break
+                    self.state = AdvState.RADIO_SWITCH_DELAY2
+                    continue
+            
+            if self.state == AdvState.RADIO_SWITCH_DELAY2:
+                self.debug_info("begin")
+                yield self.env.timeout(const.T_ifs_advertiser)
+                self.debug_info("end")
+                self.state = AdvState.TX_SCAN_RESP
+                continue
+
+            if self.state == AdvState.TX_SCAN_RESP:
+                self.debug_info("begin")
+                pkt = packet.Packet(self.id, channel = self.channel, type=packet.PktType.SCAN_RSP)
+                yield self.env.process(self.transmit(pkt))
+                self.debug_info("end")
+                if self.channel == 39:
+                    self.state = AdvState.POSTPROCESSING_DELAY
+                    self.channel = 37
+                else:
+                    self.state = AdvState.STANDBY_DELAY
+                    self.channel += 1
+                continue
 
             counter += 1
     
     def beginReception(self, packet):
-        print("Zaczynam odbior w advertiserze")
         if self.channel == packet.channel:
             self.ongoing_receptions += 1
             if self.state == AdvState.DETECT:
@@ -125,7 +143,6 @@ class Advertiser(object):
                 self.action.interrupt()
 
     def endReception(self, packet):
-        print("Koncze odbior w advertiserze")
         if self.channel == packet.channel:
             self.ongoing_receptions -= 1
             # if self.state == ScannerState.RX:
@@ -136,7 +153,10 @@ class Advertiser(object):
 
     def transmit(self, pkt):
         self.network.beginReceptionInDevices(pkt)
-        yield self.env.timeout(const.T_advind)
+        if pkt.type == packet.PktType.ADV_SCAN_IND:
+            yield self.env.timeout(const.T_advind)
+        if pkt.type == packet.PktType.SCAN_RSP:
+            yield self.env.timeout(const.T_scanresp)
         self.network.endReceptionInDevices(pkt)
 
     def detect(self, channel):
@@ -150,8 +170,7 @@ class Advertiser(object):
         yield self.env.timeout(4000)
 
     def receive(self, packet):
-        self.action.interrupt()
-        yield self.env.timeout(0.1)
+        yield self.env.timeout(300) # how long should it wait for packet, interrupted if packet is received
 
     def debug_info(self, state):
         if self.debug_mode is True:
@@ -162,4 +181,6 @@ class Advertiser(object):
                 print("ADV", self.id, "State", str(self.state) + channel, "\t\tbegin\t", self.env.now)
             if state == "end":
                 print("ADV", self.id, "State", str(self.state) + channel, "\t\tend\t", self.env.now)
+            if state == "break":
+                print("ADV", self.id, "State", str(self.state) + channel, "\t\tbreak\t", self.env.now)
         

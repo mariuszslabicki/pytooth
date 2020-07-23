@@ -56,7 +56,6 @@ class Scanner(object):
                     self.debug_info("end")
                     if self.receiving_packet.type == packet.PktType.ADV_SCAN_IND:
                         self.state = ScannerState.T_IFS_DELAY1
-                        print("Odebralem pakiet w skanerze")
                         self.receiving_packet = None
                 except simpy.Interrupt:
                     self.debug_info("break")
@@ -91,26 +90,8 @@ class Scanner(object):
                 self.debug_info("end")
                 self.state = ScannerState.SCAN
 
-            # if self.state == ScannerState.IDLE:
-            #     self.debug_info("begin")
-            #     yield self.env.process(self.idle(const.T_scaninterval - const.T_scanwindow))
-            #     self.channel += 1
-            #     if self.channel > 39:
-            #         self.channel = 37
-            #     self.debug_info("end")
-            #     self.state = ScannerState.SCAN
-
-            # if self.state == ScannerState.NOISE:
-            #     self.debug_info()
-            #     start = self.env.now
-            #     try:
-            #         yield self.env.process(self.processInterference())
-            #         self.state = ScannerState.LISTEN
-            #     except simpy.Interrupt:
-            #         self.state = ScannerState.NOISE
-            #     self.events_list.append(dict(Task="SCANNER", Start=start, Finish=self.env.now, Resource='noise', Description='Interference'))
-
     def beginReception(self, packet):
+        print("\t", self.env.now, "Rozpoczynam odbior w scanerze", self.channel, packet.channel)
         if self.channel == packet.channel:
             self.ongoing_receptions += 1
             if self.state == ScannerState.SCAN:
@@ -120,6 +101,7 @@ class Scanner(object):
                 self.action.interrupt()
 
     def endReception(self, packet):
+        print("\t", self.env.now, "Koncze odbior w scanerze", self.channel, packet.channel)
         if self.channel == packet.channel:
             self.ongoing_receptions -= 1
             # if self.state == ScannerState.RX:
