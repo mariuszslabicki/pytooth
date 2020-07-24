@@ -39,34 +39,44 @@ class Advertiser(object):
         while True:
             if self.state == AdvState.INIT_DELAY:
                 self.debug_info("begin")
+                self.save_event("begin")
                 yield self.env.timeout(const.T_init_delay)
                 self.debug_info("end")
+                self.save_event("end")
                 self.state = AdvState.RADIO_START_DELAY
 
             if self.state == AdvState.RADIO_START_DELAY:
                 self.debug_info("begin")
+                self.save_event("begin")
                 yield self.env.timeout(const.T_radio_start_delay)
                 self.debug_info("end")
+                self.save_event("end")
                 self.state = AdvState.TX_ADV
 
             if self.state == AdvState.TX_ADV:
                 self.debug_info("begin")
+                self.save_event("begin")
                 pkt = packet.Packet(self.id, channel = self.channel, type=packet.PktType.ADV_SCAN_IND)
                 yield self.env.process(self.transmit(pkt))
                 self.debug_info("end")
+                self.save_event("end")
                 self.state = AdvState.RADIO_SWITCH_DELAY1
                 
             if self.state == AdvState.RADIO_SWITCH_DELAY1:
                 self.debug_info("begin")
+                self.save_event("begin")
                 yield self.env.timeout(const.T_ifs_advertiser)
                 self.debug_info("end")
+                self.save_event("end")
                 self.state = AdvState.DETECT
 
             if self.state == AdvState.DETECT:
                 self.debug_info("begin")
+                self.save_event("begin")
                 try:
                     yield self.env.process(self.detect(self.channel))
                     self.debug_info("end")
+                    self.save_event("end")
                     if self.channel == 39:
                         self.state = AdvState.POSTPROCESSING_DELAY
                         self.channel = 37
@@ -75,6 +85,7 @@ class Advertiser(object):
                         self.channel += 1
                 except simpy.Interrupt:
                     self.debug_info("break")
+                    self.save_event("break")
                     if self.ongoing_receptions == 1:
                         self.state = AdvState.RX
                     else:
@@ -84,47 +95,60 @@ class Advertiser(object):
 
             if self.state == AdvState.POSTPROCESSING_DELAY:
                 self.debug_info("begin")
+                self.save_event("begin")
                 yield self.env.timeout(const.T_postprocessing_delay)
                 self.debug_info("end")
+                self.save_event("end")
                 self.state = AdvState.IDLE
             
             if self.state == AdvState.STANDBY_DELAY:
                 self.debug_info("begin")
+                self.save_event("begin")
                 yield self.env.timeout(const.T_standby_delay)
                 self.debug_info("end")
+                self.save_event("end")
                 self.state = AdvState.RADIO_START_DELAY
 
             if self.state == AdvState.IDLE:
                 self.debug_info("begin")
+                self.save_event("begin")
                 yield self.env.timeout(1000)
                 self.debug_info("end")
+                self.save_event("end")
                 self.state = AdvState.INIT_DELAY
 
             if self.state == AdvState.RX:
                 self.debug_info("begin")
+                self.save_event("begin")
                 self.receiving_now = True
                 try:
                     yield self.env.process(self.receive(self.channel))
                     print("Odebralem pakiet w advertiserze")
-                    self.state = AdvState.IDLE
                     self.debug_info("end")
+                    self.save_event("end")
+                    self.state = AdvState.IDLE
                 except simpy.Interrupt:
                     self.debug_info("break")
+                    self.save_event("break")
                     self.state = AdvState.RADIO_SWITCH_DELAY2
                     continue
             
             if self.state == AdvState.RADIO_SWITCH_DELAY2:
                 self.debug_info("begin")
+                self.save_event("begin")
                 yield self.env.timeout(const.T_ifs_advertiser)
                 self.debug_info("end")
+                self.save_event("end")
                 self.state = AdvState.TX_SCAN_RESP
                 continue
 
             if self.state == AdvState.TX_SCAN_RESP:
                 self.debug_info("begin")
+                self.save_event("begin")
                 pkt = packet.Packet(self.id, channel = self.channel, type=packet.PktType.SCAN_RSP)
                 yield self.env.process(self.transmit(pkt))
                 self.debug_info("end")
+                self.save_event("end")
                 if self.channel == 39:
                     self.state = AdvState.POSTPROCESSING_DELAY
                     self.channel = 37
@@ -178,9 +202,14 @@ class Advertiser(object):
             if self.state is AdvState.DETECT or self.state is AdvState.TX_ADV or self.state is AdvState.TX_SCAN_RESP or self.state is AdvState.RX:
                 channel = " " + str(self.channel)
             if state == "begin":
-                print("ADV", self.id, "State", str(self.state) + channel, "\t\tbegin\t", self.env.now)
+                print("ADV", self.id, str(self.state) + channel, "\t\t\t\tbegin\t", self.env.now)
             if state == "end":
-                print("ADV", self.id, "State", str(self.state) + channel, "\t\tend\t", self.env.now)
+                print("ADV", self.id, str(self.state) + channel, "\t\t\t\tend\t", self.env.now)
             if state == "break":
-                print("ADV", self.id, "State", str(self.state) + channel, "\t\tbreak\t", self.env.now)
-        
+                print("ADV", self.id, str(self.state) + channel, "\t\t\t\tbreak\t", self.env.now)
+
+    def save_event(self, text):
+        channel = ""
+        if self.state is AdvState.DETECT or self.state is AdvState.TX_ADV or self.state is AdvState.TX_SCAN_RESP or self.state is AdvState.RX:
+            channel = " " + str(self.channel)
+        self.events_list.append(["ADV", self.id, str(self.state) + channel, text, self.env.now])

@@ -23,6 +23,7 @@ class Scanner(object):
         self.received = 0
         self.lost = 0
         self.action = env.process(self.main_loop())
+        self.events_list = events_list
         self.channel = 37
         self.network = network
         self.state = ScannerState.SCAN
@@ -36,6 +37,7 @@ class Scanner(object):
         while True:
             if self.state == ScannerState.SCAN:
                 self.debug_info("begin")
+                self.save_event("begin")
                 if self.scan_started is False:
                     self.freq_change_time = self.env.now + const.T_scanwindow
                     self.scan_started = True
@@ -43,55 +45,67 @@ class Scanner(object):
                 try:
                     yield self.env.process(self.scan(self.channel, self.freq_change_time))
                     self.debug_info("end")
+                    self.save_event("end")
                     self.state = ScannerState.FREQ_CHANGE_DELAY
 
                 except simpy.Interrupt:
                     self.debug_info("break")
+                    self.save_event("break")
                     self.state = ScannerState.RX
 
             if self.state == ScannerState.RX:
                 self.debug_info("begin")
+                self.save_event("begin")
                 try:
                     yield self.env.process(self.receive())
                     self.debug_info("end")
+                    self.save_event("end")
                     if self.receiving_packet.type == packet.PktType.ADV_SCAN_IND:
                         self.state = ScannerState.T_IFS_DELAY1
                         self.receiving_packet = None
                 except simpy.Interrupt:
                     self.debug_info("break")
+                    self.save_event("break")
                     self.state = ScannerState.COLISION
 
             if self.state == ScannerState.FREQ_CHANGE_DELAY:
                 self.debug_info("begin")
+                self.save_event("begin")
                 yield self.env.timeout(const.T_freq_change_delay)
                 self.scan_started = False
                 self.channel += 1
                 if self.channel == 40:
                     self.channel = 37
                 self.debug_info("end")
+                self.save_event("end")
                 self.state = ScannerState.SCAN
 
             if self.state == ScannerState.T_IFS_DELAY1:
                 self.debug_info("begin")
+                self.save_event("begin")
                 yield self.env.timeout(const.T_ifs_scanner)
                 self.debug_info("end")
+                self.save_event("end")
                 self.state = ScannerState.TX
 
             if self.state == ScannerState.TX:
                 self.debug_info("begin")
+                self.save_event("begin")
                 pkt = packet.Packet(self.id, channel = self.channel, type=packet.PktType.SCAN_REQ)
                 yield self.env.process(self.transmit(pkt))
                 self.debug_info("end")
+                self.save_event("end")
                 self.state = ScannerState.T_IFS_DELAY2
 
             if self.state == ScannerState.T_IFS_DELAY2:
                 self.debug_info("begin")
+                self.save_event("begin")
                 yield self.env.timeout(const.T_ifs_scanner)
                 self.debug_info("end")
+                self.save_event("end")
                 self.state = ScannerState.SCAN
 
     def beginReception(self, packet):
-        print("\t", self.env.now, "Rozpoczynam odbior w scanerze", self.channel, packet.channel)
         if self.channel == packet.channel:
             self.ongoing_receptions += 1
             if self.state == ScannerState.SCAN:
@@ -101,7 +115,6 @@ class Scanner(object):
                 self.action.interrupt()
 
     def endReception(self, packet):
-        print("\t", self.env.now, "Koncze odbior w scanerze", self.channel, packet.channel)
         if self.channel == packet.channel:
             self.ongoing_receptions -= 1
             # if self.state == ScannerState.RX:
@@ -132,10 +145,16 @@ class Scanner(object):
             if self.state is ScannerState.SCAN or self.state is ScannerState.TX or self.state is ScannerState.RX:
                 channel = " " + str(self.channel)
             if state == "begin":
-                print("SC", self.id, "State", str(self.state) + channel, "\t\tbegin\t", self.env.now)
+                print("SC", self.id, str(self.state) + channel, "\t\t\t\tbegin\t", self.env.now)
             if state == "end":
-                print("SC", self.id, "State", str(self.state) + channel, "\t\tend\t", self.env.now)
+                print("SC", self.id, str(self.state) + channel, "\t\t\t\tend\t", self.env.now)
             if state == "break":
-                print("SC", self.id, "State", str(self.state) + channel, "\t\tbreak\t", self.env.now)
+                print("SC", self.id, str(self.state) + channel, "\t\t\t\tbreak\t", self.env.now)
             if state == "continue":
-                print("SC", self.id, "State", str(self.state) + channel, "\t\tcontinue\t", self.env.now)
+                print("SC", self.id, str(self.state) + channel, "\t\t\t\tcontinue\t", self.env.now)
+
+    def save_event(self, text):
+        channel = ""
+        if self.state is ScannerState.SCAN or self.state is ScannerState.TX or self.state is ScannerState.RX:
+            channel = " " + str(self.channel)
+        self.events_list.append(["SC", self.id, str(self.state) + channel, text, self.env.now])

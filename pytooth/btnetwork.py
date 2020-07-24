@@ -1,3 +1,4 @@
+import csv
 import simpy
 from datetime import datetime
 import pytooth.advertiser
@@ -45,3 +46,9 @@ class BTNetwork(object):
             if pkt.type == packet.PktType.SCAN_RSP and pkt.src_id == advertiser.id:
                 continue
             advertiser.endReception(pkt)
+
+    def saveEventListCSV(self, filename):
+        with open(filename, 'w', newline='') as csvfile:
+            eventsFile = csv.writer(csvfile, delimiter='\t', quotechar='|', quoting=csv.QUOTE_MINIMAL)
+            for event in self.events_list:
+                eventsFile.writerow(event)
