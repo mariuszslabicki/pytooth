@@ -15,3 +15,4 @@ network.evaluateNetwork(10000)
 # network.drawTimeline()
 
 network.saveEventListCSV("output.csv")
+network.saveEventListVCD("output.vcd")

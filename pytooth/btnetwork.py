@@ -52,3 +52,18 @@ class BTNetwork(object):
             eventsFile = csv.writer(csvfile, delimiter='\t', quotechar='|', quoting=csv.QUOTE_MINIMAL)
             for event in self.events_list:
                 eventsFile.writerow(event)
+
+    def saveEventListVCD(self, filename):
+        import vcd
+        # from vcd import VCDWriter
+        with open(filename, 'w', newline='') as vcdfile:
+            with vcd.VCDWriter(vcdfile, timescale='1 ns', date='today') as writer:
+                # counter_var = writer.register_var('a.b.c', 'counter', 'integer', size=8)
+                # real_var = writer.register_var('a.b.c', 'x', 'real', init=1.23)
+                # for timestamp, value in enumerate(range(10, 20, 2)):
+                #     writer.change(counter_var, timestamp, value)
+                # writer.change(real_var, 5, 3.21)
+                advert0 = writer.register_var('adv0', 'counter', 'integer', size=8)
+                for event in self.events_list:
+                    if event[0] is "ADV":
+                        writer.change(advert0, event[2], pytooth.advertiser.AdvState[event[4][9:]].value)

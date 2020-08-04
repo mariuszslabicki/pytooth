@@ -212,4 +212,4 @@ class Advertiser(object):
         channel = ""
         if self.state is AdvState.DETECT or self.state is AdvState.TX_ADV or self.state is AdvState.TX_SCAN_RESP or self.state is AdvState.RX:
             channel = " " + str(self.channel)
-        self.events_list.append(["ADV", self.id, str(self.state) + channel, text, self.env.now])
+        self.events_list.append(["ADV", self.id, self.env.now, text, str(self.state), channel])

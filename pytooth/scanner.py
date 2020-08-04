@@ -157,4 +157,4 @@ class Scanner(object):
         channel = ""
         if self.state is ScannerState.SCAN or self.state is ScannerState.TX or self.state is ScannerState.RX:
             channel = " " + str(self.channel)
-        self.events_list.append(["SC", self.id, str(self.state) + channel, text, self.env.now])
+        self.events_list.append(["SC", self.id, self.env.now, text, str(self.state), channel])
