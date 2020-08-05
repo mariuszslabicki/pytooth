@@ -49,6 +49,7 @@ class BTNetwork(object):
 
     def printStats(self):
         self.number_of_transmitted_adv = 0
+        self.number_of_received_adv = 0
         self.number_of_received_req = 0
         self.number_of_transmitted_resp = 0
         for adv in self.advertisers:
@@ -56,7 +57,11 @@ class BTNetwork(object):
             self.number_of_received_req += adv.number_of_received_req
             self.number_of_transmitted_resp += adv.number_of_transmitted_resp
 
+        for sc in self.scanners:
+            self.number_of_received_adv += sc.number_of_received_adv
+
         print("Number of transmitted adv", self.number_of_transmitted_adv)
+        print("\t\t\t\tNumber of received adv", self.number_of_received_adv)
         print("Number of received req", self.number_of_received_req)
         print("Number of transmitted resp", self.number_of_transmitted_resp)
 

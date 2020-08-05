@@ -32,6 +32,7 @@ class Scanner(object):
         self.freq_change_time = None
         self.scan_started = False
         self.debug_mode = False
+        self.number_of_received_adv = 0
 
     def main_loop(self):
         while True:
@@ -64,6 +65,7 @@ class Scanner(object):
                     if self.receiving_packet.type == packet.PktType.ADV_SCAN_IND:
                         self.state = ScannerState.T_IFS_DELAY1
                         self.receiving_packet = None
+                        self.number_of_received_adv += 1
                 except simpy.Interrupt as i:
                     self.debug_info("break")
                     self.save_event("break")
