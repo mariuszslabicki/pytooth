@@ -47,6 +47,19 @@ class BTNetwork(object):
                 continue
             advertiser.endReception(pkt)
 
+    def printStats(self):
+        self.number_of_transmitted_adv = 0
+        self.number_of_received_req = 0
+        self.number_of_transmitted_resp = 0
+        for adv in self.advertisers:
+            self.number_of_transmitted_adv += adv.number_of_transmitted_adv
+            self.number_of_received_req += adv.number_of_received_req
+            self.number_of_transmitted_resp += adv.number_of_transmitted_resp
+
+        print("Number of transmitted adv", self.number_of_transmitted_adv)
+        print("Number of received req", self.number_of_received_req)
+        print("Number of transmitted resp", self.number_of_transmitted_resp)
+
     def saveEventListCSV(self, filename):
         with open(filename, 'w', newline='') as csvfile:
             eventsFile = csv.writer(csvfile, delimiter='\t', quotechar='|', quoting=csv.QUOTE_MINIMAL)
@@ -63,7 +76,7 @@ class BTNetwork(object):
                 # for timestamp, value in enumerate(range(10, 20, 2)):
                 #     writer.change(counter_var, timestamp, value)
                 # writer.change(real_var, 5, 3.21)
-                advert0 = writer.register_var('adv0', 'counter', 'integer', size=8)
+                advert0 = writer.register_var('adv0', 'adv0', 'integer', size=8)
                 for event in self.events_list:
-                    if event[0] is "ADV":
+                    if event[0] == "ADV":
                         writer.change(advert0, event[2], pytooth.advertiser.AdvState[event[4][9:]].value)
