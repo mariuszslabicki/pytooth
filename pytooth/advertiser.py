@@ -89,7 +89,6 @@ class Advertiser(object):
                 except simpy.Interrupt:
                     self.debug_info("break")
                     self.save_event("break")
-                    print(self.ongoing_receptions)
                     if self.ongoing_receptions == 1:
                         self.state = AdvState.RX
                     else:

@@ -15,3 +15,6 @@ T_init_delay = 1532
 T_radio_start_delay = 130
 T_postprocessing_delay = 350
 T_standby_delay = 155
+
+T_error_decoding_delay = 144
+T_decod_delay = 194
