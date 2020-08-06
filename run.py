@@ -17,5 +17,5 @@ network.evaluateNetwork(10000)
 
 network.printStats()
 
-network.saveEventListCSV("output.csv")
-# network.saveEventListVCD("output.vcd")
+# network.saveEventListCSV("output.csv")
+network.saveEventListVCD("output.vcd")

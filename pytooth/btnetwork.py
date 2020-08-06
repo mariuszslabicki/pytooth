@@ -84,7 +84,9 @@ class BTNetwork(object):
                 # for timestamp, value in enumerate(range(10, 20, 2)):
                 #     writer.change(counter_var, timestamp, value)
                 # writer.change(real_var, 5, 3.21)
-                advert0 = writer.register_var('adv0', 'adv0', 'integer', size=8)
+                advert0 = writer.register_var('adv0', 'adv0', 'string', size=64)
                 for event in self.events_list:
                     if event[0] == "ADV":
-                        writer.change(advert0, event[2], pytooth.advertiser.AdvState[event[4][9:]].value)
+                        stateName = str(pytooth.advertiser.AdvState[event[4][9:]])[9:]
+                        print(stateName)
+                        writer.change(advert0, event[2], stateName)
