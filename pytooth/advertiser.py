@@ -90,12 +90,7 @@ class Advertiser(object):
                 except simpy.Interrupt:
                     self.debug_info("break")
                     self.save_event("break")
-                    if self.ongoing_receptions == 1:
-                        self.state = AdvState.RX
-                    else:
-                        pass
-                    # RX fail
-                    continue
+                    self.state = AdvState.RX
 
             if self.state == AdvState.POSTPROCESSING_DELAY:
                 self.debug_info("begin")
@@ -125,7 +120,7 @@ class Advertiser(object):
                 self.debug_info("begin")
                 self.save_event("begin")
                 self.receptionInterrupted = False
-                yield self.env.process(self.receive(self.channel))
+                yield self.env.process(self.receive(self.receiving_packet))
                 if self.receptionInterrupted == False:
                     self.number_of_received_req += 1
                     self.state = AdvState.RADIO_SWITCH_DELAY2

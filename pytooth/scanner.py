@@ -28,7 +28,7 @@ class Scanner(object):
         self.network = network
         self.state = ScannerState.SCAN
         self.receiving_packet = None
-        self.ongoing_receptions = 0
+        self.ongoing_receptions = {37:0, 38:0, 39:0}
         self.freq_change_time = None
         self.scan_started = False
         self.debug_mode = False
@@ -43,17 +43,19 @@ class Scanner(object):
                 if self.scan_started is False:
                     self.freq_change_time = self.env.now + const.T_scanwindow
                     self.scan_started = True
-
                 try:
                     yield self.env.process(self.scan(self.channel, self.freq_change_time))
                     self.debug_info("end")
                     self.save_event("end")
                     self.state = ScannerState.FREQ_CHANGE_DELAY
 
-                except simpy.Interrupt:
+                except simpy.Interrupt as i:
                     self.debug_info("break")
                     self.save_event("break")
-                    self.state = ScannerState.RX
+                    if i.cause == "begin_reception":
+                        self.state = ScannerState.RX
+                    if i.cause == "end_reception":
+                        self.state = ScannerState.ERROR_DECODING_DELAY
 
             if self.state == ScannerState.RX:
                 self.debug_info("begin")
@@ -66,7 +68,7 @@ class Scanner(object):
                         self.state = ScannerState.T_IFS_DELAY1
                         self.receiving_packet = None
                         self.number_of_received_adv += 1
-                    elif self.receiving_packet.type == packet.PktType.SCAN_REQ:
+                    elif self.receiving_packet.type == packet.PktType.SCAN_RSP:
                         self.state = ScannerState.DECODING_DELAY
                         self.receiving_packet = None
 
@@ -74,8 +76,8 @@ class Scanner(object):
                     self.debug_info("break")
                     self.save_event("break")
                     if i.cause == "begin_reception":
-                        self.state = ScannerState.COLISION
-
+                        self.receiving_packet = None
+                        self.state = ScannerState.SCAN
 
             if self.state == ScannerState.FREQ_CHANGE_DELAY:
                 self.debug_info("begin")
@@ -118,24 +120,18 @@ class Scanner(object):
                 self.save_event("end")
                 self.state = ScannerState.SCAN
 
-            if self.state == ScannerState.COLISION:
-                self.debug_info("begin")
-                self.save_event("begin")
-                try:
-                    print("Wchodze")
-                    yield self.env.process(self.colide())
-                    print("Wyszedlem")
-                    self.state = ScannerState.ERROR_DECODING_DELAY
-                except simpy.Interrupt as i:
-                    self.debug_info("break")
-                    self.save_event("break")
-                    if i.cause == "begin_reception":
-                        self.state = ScannerState.COLISION
-
             if self.state == ScannerState.ERROR_DECODING_DELAY:
                 self.debug_info("begin")
                 self.save_event("begin")
                 yield self.env.timeout(const.T_error_decoding_delay)
+                self.debug_info("end")
+                self.save_event("end")
+                self.state = ScannerState.SCAN
+
+            if self.state == ScannerState.DECODING_DELAY:
+                self.debug_info("begin")
+                self.save_event("begin")
+                yield self.env.timeout(const.T_decod_delay)
                 self.debug_info("end")
                 self.save_event("end")
                 self.state = ScannerState.SCAN
@@ -162,20 +158,19 @@ class Scanner(object):
                 self.state = ScannerState.SCAN
 
     def beginReception(self, packet):
+        self.ongoing_receptions[self.channel] += 1
         if self.channel == packet.channel:
-            print("Begin reception w skanerze")
-            if self.state == ScannerState.SCAN:
+            if self.state == ScannerState.SCAN and self.ongoing_receptions[self.channel] == 1:
                 self.receiving_packet = packet
                 self.action.interrupt("begin_reception")
             if self.state == ScannerState.RX:
-                self.receiving_packet = packet
-                self.action.interrupt("begin_reception")
-            if self.state == ScannerState.COLISION:
-                self.receiving_packet = packet
                 self.action.interrupt("begin_reception")
 
     def endReception(self, packet):
-        pass
+        self.ongoing_receptions[self.channel] -= 1
+        if self.channel == packet.channel:
+            if self.state == ScannerState.SCAN and self.ongoing_receptions[self.channel] == 0:
+                self.action.interrupt("end_reception")
 
     def scan(self, channel, end_time):
         how_long = end_time - self.env.now
@@ -189,10 +184,8 @@ class Scanner(object):
     def receive(self):
         if self.receiving_packet.type == packet.PktType.ADV_SCAN_IND:
             yield self.env.timeout(const.T_advind)
-
-    def colide(self):
-        if self.receiving_packet.type == packet.PktType.ADV_SCAN_IND:
-            yield self.env.timeout(const.T_advind)
+        elif self.receiving_packet.type == packet.PktType.SCAN_RSP:
+            yield self.env.timeout(const.T_scanresp)
 
     def print_summary(self):
         print("Scanner: Received correct", self.received)
