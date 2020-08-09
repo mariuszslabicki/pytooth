@@ -25,12 +25,13 @@ class Advertiser(object):
         self.action = env.process(self.main_loop())
         self.received_packet = None
         self.receiving_now = False
-        self.ongoing_receptions = 0
+        self.ongoing_receptions = {37:0, 38:0, 39:0}
         self.events_list = events_list
         self.network = network
         self.state = AdvState.INIT_DELAY
         self.beginAt = 100*self.id + 100
         self.channel = 37
+        self.receptionInterrupted = False
         self.debug_mode = False
         self.number_of_transmitted_adv = 0
         self.number_of_received_req = 0
@@ -123,23 +124,18 @@ class Advertiser(object):
             if self.state == AdvState.RX:
                 self.debug_info("begin")
                 self.save_event("begin")
-                self.receiving_now = True
-                try:
-                    yield self.env.process(self.receive(self.channel))
-                except simpy.Interrupt as i:
-                    self.debug_info("break")
-                    self.save_event("break")
-                    if i.cause == "end_reception":
-                        self.number_of_received_req += 1
-                        self.state = AdvState.RADIO_SWITCH_DELAY2
-                    if i.cause == "begin_reception":
-                        if self.channel == 39:
-                            self.state = AdvState.POSTPROCESSING_DELAY
-                            self.channel = 37
-                        else:
-                            self.state = AdvState.STANDBY_DELAY
-                            self.channel += 1
-                    continue
+                self.receptionInterrupted = False
+                yield self.env.process(self.receive(self.channel))
+                if self.receptionInterrupted == False:
+                    self.number_of_received_req += 1
+                    self.state = AdvState.RADIO_SWITCH_DELAY2
+                else:
+                    if self.channel == 39:
+                        self.state = AdvState.POSTPROCESSING_DELAY
+                        self.channel = 37
+                    else:
+                        self.state = AdvState.STANDBY_DELAY
+                        self.channel += 1
             
             if self.state == AdvState.RADIO_SWITCH_DELAY2:
                 self.debug_info("begin")
@@ -170,19 +166,16 @@ class Advertiser(object):
     
     def beginReception(self, packet):
         if self.channel == packet.channel:
-            self.ongoing_receptions += 1
-            if self.state == AdvState.DETECT:
+            self.ongoing_receptions[self.channel] += 1
+            if self.state == AdvState.DETECT and self.ongoing_receptions[self.channel] == 1:
                 self.receiving_packet = packet
                 self.action.interrupt("begin_reception")
             if self.state == AdvState.RX:
-                self.action.interrupt("begin_reception")
+                self.receptionInterrupted = True
 
     def endReception(self, packet):
         if self.channel == packet.channel:
-            self.ongoing_receptions -= 1
-            if self.state == AdvState.RX:
-                self.action.interrupt("end_reception")
-                self.received_packet = packet
+            self.ongoing_receptions[self.channel] -= 1
 
     def transmit(self, pkt):
         self.network.beginReceptionInDevices(pkt)
