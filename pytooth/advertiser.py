@@ -33,6 +33,7 @@ class Advertiser(object):
         self.channel = 37
         self.receptionInterrupted = False
         self.debug_mode = False
+        self.scanner_id = -1
         self.number_of_transmitted_adv = 0
         self.number_of_received_req = 0
         self.number_of_transmitted_resp = 0
@@ -59,7 +60,7 @@ class Advertiser(object):
             if self.state == AdvState.TX_ADV:
                 self.debug_info("begin")
                 self.save_event("begin")
-                pkt = packet.Packet(self.id, channel = self.channel, type=packet.PktType.ADV_SCAN_IND)
+                pkt = packet.Packet(src_id = self.id, dst_id=-1, channel = self.channel, type=packet.PktType.ADV_SCAN_IND)
                 yield self.env.process(self.transmit(pkt))
                 self.number_of_transmitted_adv += 1
                 self.debug_info("end")
@@ -111,7 +112,8 @@ class Advertiser(object):
             if self.state == AdvState.IDLE:
                 self.debug_info("begin")
                 self.save_event("begin")
-                yield self.env.timeout(1000)
+                timeout = const.T_idle + random.randint(0, 10000)
+                yield self.env.timeout(timeout)
                 self.debug_info("end")
                 self.save_event("end")
                 self.state = AdvState.INIT_DELAY
@@ -124,6 +126,7 @@ class Advertiser(object):
                 if self.receptionInterrupted == False:
                     self.number_of_received_req += 1
                     self.state = AdvState.RADIO_SWITCH_DELAY2
+                    self.scanner_id = self.receiving_packet.src_id
                 else:
                     if self.channel == 39:
                         self.state = AdvState.POSTPROCESSING_DELAY
@@ -144,7 +147,7 @@ class Advertiser(object):
             if self.state == AdvState.TX_SCAN_RESP:
                 self.debug_info("begin")
                 self.save_event("begin")
-                pkt = packet.Packet(self.id, channel = self.channel, type=packet.PktType.SCAN_RSP)
+                pkt = packet.Packet(src_id = self.id, dst_id = self.scanner_id, channel = self.channel, type=packet.PktType.SCAN_RSP)
                 yield self.env.process(self.transmit(pkt))
                 self.number_of_transmitted_resp += 1
                 self.debug_info("end")
@@ -210,3 +213,6 @@ class Advertiser(object):
         if self.state is AdvState.DETECT or self.state is AdvState.TX_ADV or self.state is AdvState.TX_SCAN_RESP or self.state is AdvState.RX:
             channel = " " + str(self.channel)
         self.events_list.append(["ADV", self.id, self.env.now, text, str(self.state), channel])
+
+    def print_stats(self):
+        print("ADV:", self.id, "\tADV", self.number_of_transmitted_adv, "\tREQ", self.number_of_received_req, "\tRESP", self.number_of_transmitted_resp)

@@ -47,7 +47,7 @@ class BTNetwork(object):
                 continue
             advertiser.endReception(pkt)
 
-    def printStats(self):
+    def printStatsNetwork(self):
         self.number_of_transmitted_adv = 0
         self.number_of_received_adv = 0
         self.number_of_sent_req = 0
@@ -67,6 +67,10 @@ class BTNetwork(object):
         print("\t\t\t\tNumber of sent req", self.number_of_sent_req)
         print("Number of received req", self.number_of_received_req)
         print("Number of transmitted resp", self.number_of_transmitted_resp)
+    
+    def printStatsPerDevice(self):
+        for adv in self.advertisers:
+            adv.print_stats()
 
     def saveEventListCSV(self, filename):
         with open(filename, 'w', newline='') as csvfile:
