@@ -200,8 +200,14 @@ class Advertiser(object):
         # yield self.env.timeout(random.expovariate(0.01))
         yield self.env.timeout(4000)
 
-    def receive(self, packet):
-        yield self.env.timeout(300) # how long should it wait for packet, interrupted if packet is received
+    def receive(self, rcv_packet):
+        # yield self.env.timeout(300) # how long should it wait for packet, interrupted if packet is received
+        if self.receiving_packet.type == packet.PktType.ADV_SCAN_IND:
+            yield self.env.timeout(const.T_advind)
+        elif self.receiving_packet.type == packet.PktType.SCAN_RSP:
+            yield self.env.timeout(const.T_scanresp)
+        elif self.receiving_packet.type == packet.PktType.SCAN_REQ:
+            yield self.env.timeout(const.T_scanreq)
 
     def debug_info(self, state):
         if self.debug_mode is True:

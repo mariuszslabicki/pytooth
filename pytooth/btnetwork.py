@@ -81,7 +81,7 @@ class BTNetwork(object):
     def saveEventListVCD(self, filename):
         import vcd
         with open(filename, 'w', newline='') as vcdfile:
-            with vcd.VCDWriter(vcdfile, timescale='1 ns', date='today') as writer:
+            with vcd.VCDWriter(vcdfile, timescale='1 us', date='today') as writer:
                 adv_vars = []
                 for i in range(len(self.advertisers)):
                     dev_name = "adv" + str(i)
