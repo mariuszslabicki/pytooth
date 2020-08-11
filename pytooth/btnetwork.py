@@ -96,6 +96,8 @@ class BTNetwork(object):
                         dev_id = event[1]
                         dev_name = "adv" + str(dev_id)
                         stateName = str(pytooth.advertiser.AdvState[event[4][9:]])[9:]
+                        if str(event[5]) != "":
+                            stateName += "_" + str(event[5][1:])
                         print(stateName)
                         writer.change(adv_vars[dev_id], event[2], stateName)
 
@@ -103,5 +105,7 @@ class BTNetwork(object):
                         dev_id = event[1]
                         dev_name = "sc" + str(dev_id)
                         stateName = str(pytooth.scanner.ScannerState[event[4][13:]])[13:]
+                        if str(event[5]) != "":
+                            stateName += "_" + str(event[5][1:])
                         print(stateName)
                         writer.change(sc_vars[dev_id], event[2], stateName)
