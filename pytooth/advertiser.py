@@ -31,6 +31,7 @@ class Advertiser(object):
         self.state = AdvState.INIT_DELAY
         self.beginAt = 100*self.id + 100
         self.time_to_next_packet = const.T_idle
+        self.init_delay_start_time = None
         self.use_random_delay = True
         self.channel = 37
         self.receptionInterrupted = False
@@ -44,6 +45,7 @@ class Advertiser(object):
         counter = 0
         while True:
             if self.state == AdvState.INIT_DELAY:
+                self.init_delay_start_time = self.env.now
                 self.debug_info("begin")
                 self.save_event("begin")
                 yield self.env.timeout(const.T_init_delay)
@@ -114,10 +116,11 @@ class Advertiser(object):
             if self.state == AdvState.IDLE:
                 self.debug_info("begin")
                 self.save_event("begin")
+                
                 timeout = self.time_to_next_packet
                 if self.use_random_delay is True:
                     timeout += random.randint(0, 10000)
-                yield self.env.timeout(timeout)
+                yield self.env.timeout(timeout - (self.env.now - self.init_delay_start_time))
                 self.debug_info("end")
                 self.save_event("end")
                 self.state = AdvState.INIT_DELAY
