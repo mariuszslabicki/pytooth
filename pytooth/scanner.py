@@ -74,15 +74,7 @@ class Scanner(object):
                 self.save_event("begin")
                 try:
                     yield self.env.process(self.scanForResp())
-                    if self.backoff == "BTBackoff":
-                        self.invalid_resp += 1
-                        self.valid_resp = 0
-                        if self.invalid_resp == 2:
-                            self.upperLimit = self.upperLimit * 2
-                            self.invalid_resp = 0
-                            if self.upperLimit > 256:
-                                self.upperLimit = 256
-                        self.backoffCount = random.randint(1, self.upperLimit)
+                    self.evaluateBackoff(receivedRSP=False)
                     if self.freq_change_time < self.env.now:
                         self.state = ScannerState.FREQ_CHANGE_DELAY
                     else:
@@ -95,15 +87,7 @@ class Scanner(object):
                         self.state = ScannerState.RX
                     if i.cause == "end_reception":
                         self.state = ScannerState.ERROR_DECODING_DELAY
-                        if self.backoff == "BTBackoff":
-                            self.invalid_resp += 1
-                            self.valid_resp = 0
-                            if self.invalid_resp == 2:
-                                self.upperLimit = self.upperLimit * 2
-                                self.invalid_resp = 0
-                                if self.upperLimit > 256:
-                                    self.upperLimit = 256
-                            self.backoffCount = random.randint(1, self.upperLimit)
+                        self.evaluateBackoff(receivedRSP=False)
 
 
             if self.state == ScannerState.RX:
@@ -126,15 +110,7 @@ class Scanner(object):
 
                     elif self.receiving_packet.type == packet.PktType.SCAN_RSP:
                         if self.receiving_packet.dst_id == self.id:
-                            if self.backoff == "BTBackoff":
-                                self.valid_resp += 1
-                                self.invalid_resp = 0
-                                if self.valid_resp == 2:
-                                    self.upperLimit = self.upperLimit / 2
-                                    self.valid_resp = 0
-                                    if self.upperLimit < 1:
-                                        self.upperLimit = 1
-                                self.backoffCount = random.randint(1, self.upperLimit)
+                            self.evaluateBackoff(receivedRSP=True)
                         self.state = ScannerState.DECODING_DELAY
                         self.receiving_packet = None
 
@@ -258,6 +234,29 @@ class Scanner(object):
             yield self.env.timeout(const.T_advind)
         elif self.receiving_packet.type == packet.PktType.SCAN_RSP:
             yield self.env.timeout(const.T_scanresp)
+
+    def evaluateBackoff(self, receivedRSP):
+        if receivedRSP is True:
+            if self.backoff == "BTBackoff":
+                self.valid_resp += 1
+                self.invalid_resp = 0
+                if self.valid_resp == 2:
+                    self.upperLimit = self.upperLimit / 2
+                    self.valid_resp = 0
+                    if self.upperLimit < 1:
+                        self.upperLimit = 1
+                self.backoffCount = random.randint(1, self.upperLimit)
+        if receivedRSP is False:
+            if self.backoff == "BTBackoff":
+                self.invalid_resp += 1
+                self.valid_resp = 0
+                if self.invalid_resp == 2:
+                    self.upperLimit = self.upperLimit * 2
+                    self.invalid_resp = 0
+                    if self.upperLimit > 256:
+                        self.upperLimit = 256
+                self.backoffCount = random.randint(1, self.upperLimit)
+
 
     def print_summary(self):
         print("Scanner: Received correct", self.received)
