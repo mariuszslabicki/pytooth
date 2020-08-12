@@ -1,3 +1,4 @@
+import random
 import simpy
 from enum import Enum
 from pytooth import packet
@@ -18,7 +19,7 @@ class ScannerState(Enum):
     SCAN_FOR_RESP = 12
 
 class Scanner(object):
-    def __init__(self, id, env, events_list, network):
+    def __init__(self, id, env, events_list, network, backoff=None):
         self.env = env
         self.id = id
         self.received = 0
@@ -36,6 +37,12 @@ class Scanner(object):
         self.debug_mode = False
         self.number_of_received_adv = 0
         self.number_of_sent_req = 0
+        self.backoff = backoff
+        if self.backoff == "BTBackoff":
+            self.backoffCount = 0
+            self.upperLimit = 0
+            self.valid_resp = 0
+            self.invalid_resp = 0
 
     def main_loop(self):
         while True:
@@ -45,6 +52,9 @@ class Scanner(object):
                 if self.scan_started is False:
                     self.freq_change_time = self.env.now + const.T_scanwindow
                     self.scan_started = True
+                    if self.backoff == "BTBackoff":
+                        self.backoffCount = 1
+                        self.upperLimit = 1
                 try:
                     yield self.env.process(self.scan(self.freq_change_time))
                     self.debug_info("end")
@@ -64,6 +74,15 @@ class Scanner(object):
                 self.save_event("begin")
                 try:
                     yield self.env.process(self.scanForResp())
+                    if self.backoff == "BTBackoff":
+                        self.invalid_resp += 1
+                        self.valid_resp = 0
+                        if self.invalid_resp == 2:
+                            self.upperLimit = self.upperLimit * 2
+                            self.invalid_resp = 0
+                            if self.upperLimit > 256:
+                                self.upperLimit = 256
+                        self.backoffCount = random.randint(1, self.upperLimit)
                     if self.freq_change_time < self.env.now:
                         self.state = ScannerState.FREQ_CHANGE_DELAY
                     else:
@@ -76,6 +95,15 @@ class Scanner(object):
                         self.state = ScannerState.RX
                     if i.cause == "end_reception":
                         self.state = ScannerState.ERROR_DECODING_DELAY
+                        if self.backoff == "BTBackoff":
+                            self.invalid_resp += 1
+                            self.valid_resp = 0
+                            if self.invalid_resp == 2:
+                                self.upperLimit = self.upperLimit * 2
+                                self.invalid_resp = 0
+                                if self.upperLimit > 256:
+                                    self.upperLimit = 256
+                            self.backoffCount = random.randint(1, self.upperLimit)
 
 
             if self.state == ScannerState.RX:
@@ -86,11 +114,27 @@ class Scanner(object):
                     self.debug_info("end")
                     self.save_event("end")
                     if self.receiving_packet.type == packet.PktType.ADV_SCAN_IND:
-                        self.state = ScannerState.T_IFS_DELAY1
-                        self.adv_id = self.receiving_packet.src_id
+                        if self.backoff == "BTBackoff":
+                            self.backoffCount -= 1
+                        if self.backoff == None or self.backoff == "BTBackoff" and self.backoffCount == 0:
+                            self.state = ScannerState.T_IFS_DELAY1
+                            self.adv_id = self.receiving_packet.src_id
+                        if self.backoff == "BTBackoff" and self.backoffCount > 0:
+                            self.state = ScannerState.DECODING_DELAY
                         self.receiving_packet = None
                         self.number_of_received_adv += 1
+
                     elif self.receiving_packet.type == packet.PktType.SCAN_RSP:
+                        if self.receiving_packet.dst_id == self.id:
+                            if self.backoff == "BTBackoff":
+                                self.valid_resp += 1
+                                self.invalid_resp = 0
+                                if self.valid_resp == 2:
+                                    self.upperLimit = self.upperLimit / 2
+                                    self.valid_resp = 0
+                                    if self.upperLimit < 1:
+                                        self.upperLimit = 1
+                                self.backoffCount = random.randint(1, self.upperLimit)
                         self.state = ScannerState.DECODING_DELAY
                         self.receiving_packet = None
 

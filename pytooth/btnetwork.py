@@ -12,9 +12,9 @@ class BTNetwork(object):
         self.advertisers = []
         self.scanners = []
 
-    def addScanners(self, number):
+    def addScanners(self, number, backoffType=None):
         for i in range(number):
-            self.scanners.append(pytooth.scanner.Scanner(i, self.env, self.events_list, self))
+            self.scanners.append(pytooth.scanner.Scanner(i, self.env, self.events_list, self, backoffType))
 
     def addAdvertisers(self, number):
         for i in range(number):
