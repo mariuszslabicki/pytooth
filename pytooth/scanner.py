@@ -44,6 +44,8 @@ class Scanner(object):
             self.upperLimit = 0
             self.valid_resp = 0
             self.invalid_resp = 0
+        self.recv_seq_no = -1
+        self.recv_copy_id = -1
 
     def main_loop(self):
         while True:
@@ -100,6 +102,8 @@ class Scanner(object):
                     self.save_event("end")
                     self.save_pkt_to_log("Rx", self.receiving_packet)
                     if self.receiving_packet.type == packet.PktType.ADV_SCAN_IND:
+                        self.recv_copy_id = self.receiving_packet.copy_id
+                        self.recv_seq_no = self.receiving_packet.seq_no
                         if self.backoff == "BTBackoff":
                             self.backoffCount -= 1
                         if self.backoff == None or self.backoff == "BTBackoff" and self.backoffCount == 0:
@@ -146,7 +150,8 @@ class Scanner(object):
             if self.state == ScannerState.TX:
                 self.debug_info("begin")
                 self.save_event("begin")
-                pkt = packet.Packet(src_id = self.id, dst_id=self.adv_id, channel = self.channel, type=packet.PktType.SCAN_REQ)
+                pkt = packet.Packet(src_id = self.id, dst_id=self.adv_id, channel = self.channel, 
+                        type=packet.PktType.SCAN_REQ, seq_no=self.recv_seq_no, copy_id=self.recv_copy_id)
                 yield self.env.process(self.transmit(pkt))
                 self.save_pkt_to_log("Tx", pkt)
                 self.number_of_sent_req += 1

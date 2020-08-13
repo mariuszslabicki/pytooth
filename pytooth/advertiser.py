@@ -38,9 +38,14 @@ class Advertiser(object):
         self.receptionInterrupted = False
         self.debug_mode = False
         self.scanner_id = -1
+        self.adv_copy_id = 0
+        self.adv_rep_limit = int(const.T_scaninterval/const.T_idle)
+        self.seq_no = 0
         self.number_of_transmitted_adv = 0
         self.number_of_received_req = 0
         self.number_of_transmitted_resp = 0
+        self.recv_seq_no = -1
+        self.recv_copy_id = -1
 
     def main_loop(self):
         counter = 0
@@ -65,7 +70,12 @@ class Advertiser(object):
             if self.state == AdvState.TX_ADV:
                 self.debug_info("begin")
                 self.save_event("begin")
-                pkt = packet.Packet(src_id = self.id, dst_id=-1, channel = self.channel, type=packet.PktType.ADV_SCAN_IND)
+                pkt = packet.Packet(src_id = self.id, dst_id=-1, channel = self.channel, 
+                        type=packet.PktType.ADV_SCAN_IND, seq_no=self.seq_no, copy_id=self.adv_copy_id)
+                self.adv_copy_id += 1
+                if self.adv_copy_id == self.adv_rep_limit:
+                    self.adv_copy_id = 0
+                    self.seq_no += 1
                 yield self.env.process(self.transmit(pkt))
                 self.save_pkt_to_log("Tx", pkt)
                 self.number_of_transmitted_adv += 1
@@ -136,6 +146,8 @@ class Advertiser(object):
                     self.number_of_received_req += 1
                     self.state = AdvState.RADIO_SWITCH_DELAY2
                     self.scanner_id = self.receiving_packet.src_id
+                    self.recv_copy_id = self.receiving_packet.copy_id
+                    self.recv_seq_no = self.receiving_packet.seq_no
                     self.save_pkt_to_log("Rx", self.receiving_packet)
                 else:
                     if self.channel == 39:
@@ -157,7 +169,8 @@ class Advertiser(object):
             if self.state == AdvState.TX_SCAN_RESP:
                 self.debug_info("begin")
                 self.save_event("begin")
-                pkt = packet.Packet(src_id = self.id, dst_id = self.scanner_id, channel = self.channel, type=packet.PktType.SCAN_RSP)
+                pkt = packet.Packet(src_id = self.id, dst_id = self.scanner_id, channel = self.channel, 
+                        type=packet.PktType.SCAN_RSP, seq_no=self.recv_seq_no, copy_id=self.recv_copy_id)
                 yield self.env.process(self.transmit(pkt))
                 self.save_pkt_to_log("Tx", pkt)
                 self.number_of_transmitted_resp += 1

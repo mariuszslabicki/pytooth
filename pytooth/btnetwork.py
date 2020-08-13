@@ -92,14 +92,12 @@ class BTNetwork(object):
                     dev_name = "sc" + str(i)
                     sc_vars.append(writer.register_var('BTNetwork', dev_name, 'string', size=64))
                 for event in self.events_list:
-                    print(event)
                     if event[0] == "ADV":
                         dev_id = event[1]
                         dev_name = "adv" + str(dev_id)
                         stateName = str(pytooth.advertiser.AdvState[event[4][9:]])[9:]
                         if str(event[5]) != "":
                             stateName += "_" + str(event[5][1:])
-                        print(stateName)
                         writer.change(adv_vars[dev_id], event[2], stateName)
 
                     if event[0] == "SC":
@@ -108,9 +106,14 @@ class BTNetwork(object):
                         stateName = str(pytooth.scanner.ScannerState[event[4][13:]])[13:]
                         if str(event[5]) != "":
                             stateName += "_" + str(event[5][1:])
-                        print(stateName)
                         writer.change(sc_vars[dev_id], event[2], stateName)
 
     def printMsgLog(self):
         for entry in self.msg_log:
             print(entry)
+
+    def saveMsgLogToFile(self, filename):
+        with open(filename, 'w', newline='') as csvfile:
+            eventsFile = csv.writer(csvfile, delimiter='\t', quotechar='|', quoting=csv.QUOTE_MINIMAL)
+            for event in self.msg_log:
+                eventsFile.writerow(event)

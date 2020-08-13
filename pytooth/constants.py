@@ -6,8 +6,8 @@ T_scanresp = 152              # 152 microseconds
 
 T_detect = 60
 
-T_scaninterval = 500000       # 500 ms  Note: scaninterval >= scanwindow
-T_scanwindow = 500000         # 500 ms
+T_scaninterval = 10000000       # 500 ms  Note: scaninterval >= scanwindow
+T_scanwindow = 10000000         # 500 ms
 
 T_freq_change_delay = 16040   # 16.04 ms
 
@@ -19,5 +19,5 @@ T_standby_delay = 155
 T_error_decoding_delay = 144
 T_decod_delay = 194
 
-T_idle = 100000
+T_idle = 250000
 T_max_scan_resp = 376
