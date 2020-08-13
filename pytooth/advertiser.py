@@ -18,7 +18,7 @@ class AdvState(Enum):
     RADIO_SWITCH_DELAY2 = 11
 
 class Advertiser(object):
-    def __init__(self, id, env, events_list, network):
+    def __init__(self, id, env, events_list, msg_log, network):
         self.id = id
         self.env = env
         self.packets_sent = 0
@@ -27,6 +27,7 @@ class Advertiser(object):
         self.receiving_now = False
         self.ongoing_receptions = {37:0, 38:0, 39:0}
         self.events_list = events_list
+        self.msg_log = msg_log
         self.network = network
         self.state = AdvState.INIT_DELAY
         self.beginAt = 100*self.id + 100
@@ -66,6 +67,7 @@ class Advertiser(object):
                 self.save_event("begin")
                 pkt = packet.Packet(src_id = self.id, dst_id=-1, channel = self.channel, type=packet.PktType.ADV_SCAN_IND)
                 yield self.env.process(self.transmit(pkt))
+                self.save_pkt_to_log("Tx", pkt)
                 self.number_of_transmitted_adv += 1
                 self.debug_info("end")
                 self.save_event("end")
@@ -134,6 +136,7 @@ class Advertiser(object):
                     self.number_of_received_req += 1
                     self.state = AdvState.RADIO_SWITCH_DELAY2
                     self.scanner_id = self.receiving_packet.src_id
+                    self.save_pkt_to_log("Rx", self.receiving_packet)
                 else:
                     if self.channel == 39:
                         self.state = AdvState.POSTPROCESSING_DELAY
@@ -156,6 +159,7 @@ class Advertiser(object):
                 self.save_event("begin")
                 pkt = packet.Packet(src_id = self.id, dst_id = self.scanner_id, channel = self.channel, type=packet.PktType.SCAN_RSP)
                 yield self.env.process(self.transmit(pkt))
+                self.save_pkt_to_log("Tx", pkt)
                 self.number_of_transmitted_resp += 1
                 self.debug_info("end")
                 self.save_event("end")
@@ -229,3 +233,9 @@ class Advertiser(object):
 
     def print_stats(self):
         print("ADV:", self.id, "\tADV", self.number_of_transmitted_adv, "\tREQ", self.number_of_received_req, "\tRESP", self.number_of_transmitted_resp)
+
+    def save_pkt_to_log(self, txrx, pkt):
+        if txrx == "Tx":
+            self.msg_log.append([self.env.now, "Tx", pkt.src_id, pkt.dst_id, pkt.type, self.channel, pkt.seq_no, pkt.copy_id])
+        if txrx == "Rx":
+            self.msg_log.append([self.env.now, "Rx", pkt.src_id, pkt.dst_id, pkt.type, self.channel, pkt.seq_no, pkt.copy_id])

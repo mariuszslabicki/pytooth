@@ -19,13 +19,14 @@ class ScannerState(Enum):
     SCAN_FOR_RESP = 12
 
 class Scanner(object):
-    def __init__(self, id, env, events_list, network, backoff=None):
+    def __init__(self, id, env, events_list, msg_log, network, backoff=None):
         self.env = env
         self.id = id
         self.received = 0
         self.lost = 0
         self.action = env.process(self.main_loop())
         self.events_list = events_list
+        self.msg_log = msg_log
         self.channel = 37
         self.network = network
         self.state = ScannerState.SCAN
@@ -97,6 +98,7 @@ class Scanner(object):
                     yield self.env.process(self.receive())
                     self.debug_info("end")
                     self.save_event("end")
+                    self.save_pkt_to_log("Rx", self.receiving_packet)
                     if self.receiving_packet.type == packet.PktType.ADV_SCAN_IND:
                         if self.backoff == "BTBackoff":
                             self.backoffCount -= 1
@@ -146,6 +148,7 @@ class Scanner(object):
                 self.save_event("begin")
                 pkt = packet.Packet(src_id = self.id, dst_id=self.adv_id, channel = self.channel, type=packet.PktType.SCAN_REQ)
                 yield self.env.process(self.transmit(pkt))
+                self.save_pkt_to_log("Tx", pkt)
                 self.number_of_sent_req += 1
                 self.debug_info("end")
                 self.save_event("end")
@@ -281,3 +284,9 @@ class Scanner(object):
         if self.state is ScannerState.SCAN or self.state is ScannerState.TX or self.state is ScannerState.RX:
             channel = " " + str(self.channel)
         self.events_list.append(["SC", self.id, self.env.now, text, str(self.state), channel])
+
+    def save_pkt_to_log(self, txrx, pkt):
+        if txrx == "Tx":
+            self.msg_log.append([self.env.now, "Tx", pkt.src_id, pkt.dst_id, pkt.type, self.channel, pkt.seq_no, pkt.copy_id])
+        if txrx == "Rx":
+            self.msg_log.append([self.env.now, "Rx", pkt.src_id, pkt.dst_id, pkt.type, self.channel, pkt.seq_no, pkt.copy_id])

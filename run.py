@@ -28,3 +28,4 @@ network.printStatsPerDevice()
 
 # network.saveEventListCSV("1scanner_2advertisers.csv")
 network.saveEventListVCD("output.vcd")
+network.printMsgLog()

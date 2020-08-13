@@ -9,16 +9,17 @@ class BTNetwork(object):
     def __init__(self):
         self.env = simpy.Environment()
         self.events_list = []
+        self.msg_log = []
         self.advertisers = []
         self.scanners = []
 
     def addScanners(self, number, backoffType=None):
         for i in range(number):
-            self.scanners.append(pytooth.scanner.Scanner(i, self.env, self.events_list, self, backoffType))
+            self.scanners.append(pytooth.scanner.Scanner(i, self.env, self.events_list, self.msg_log, self, backoffType))
 
     def addAdvertisers(self, number):
         for i in range(number):
-            self.advertisers.append(pytooth.advertiser.Advertiser(i, self.env, self.events_list, self))
+            self.advertisers.append(pytooth.advertiser.Advertiser(i, self.env, self.events_list, self.msg_log, self))
 
     def evaluateNetwork(self, time=10000):
         self.env.run(time)
@@ -109,3 +110,7 @@ class BTNetwork(object):
                             stateName += "_" + str(event[5][1:])
                         print(stateName)
                         writer.change(sc_vars[dev_id], event[2], stateName)
+
+    def printMsgLog(self):
+        for entry in self.msg_log:
+            print(entry)
