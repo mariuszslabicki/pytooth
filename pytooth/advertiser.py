@@ -142,7 +142,7 @@ class Advertiser(object):
                 self.save_event("begin")
                 self.receptionInterrupted = False
                 yield self.env.process(self.receive(self.receiving_packet))
-                if self.receptionInterrupted == False:
+                if self.receptionInterrupted == False and self.receiving_packet.dst_id == self.id:
                     self.number_of_received_req += 1
                     self.state = AdvState.RADIO_SWITCH_DELAY2
                     self.scanner_id = self.receiving_packet.src_id
