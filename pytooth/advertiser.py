@@ -72,7 +72,8 @@ class Advertiser(object):
                 self.save_event("begin")
                 pkt = packet.Packet(src_id = self.id, dst_id=-1, channel = self.channel, 
                         type=packet.PktType.ADV_SCAN_IND, seq_no=self.seq_no, copy_id=self.adv_copy_id)
-                self.adv_copy_id += 1
+                if self.channel == 39:
+                    self.adv_copy_id += 1
                 if self.adv_copy_id == self.adv_rep_limit:
                     self.adv_copy_id = 0
                     self.seq_no += 1
