@@ -115,6 +115,6 @@ class BTNetwork(object):
     def saveMsgLogToFile(self, filename):
         with open(filename, 'w', newline='') as csvfile:
             csvfile = csv.writer(csvfile, delimiter=',', quotechar='|', quoting=csv.QUOTE_MINIMAL)
-            csvfile.writerow(["timestamp", "tx/rx", "src_id", "dst_id", "pkt_type", "channel", "data_id", "counter_id"])
+            csvfile.writerow(["timestamp", "tx/rx", "logger_id", "src_id", "dst_id", "pkt_type", "channel", "data_id", "counter_id"])
             for msg in self.msg_log:
                 csvfile.writerow(msg)

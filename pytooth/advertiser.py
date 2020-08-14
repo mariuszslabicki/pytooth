@@ -250,6 +250,6 @@ class Advertiser(object):
 
     def save_pkt_to_log(self, txrx, pkt):
         if txrx == "Tx":
-            self.msg_log.append([self.env.now, "Tx", pkt.src_id, pkt.dst_id, pkt.type, self.channel, pkt.seq_no, pkt.copy_id])
+            self.msg_log.append([self.env.now, "Tx", self.id, pkt.src_id, pkt.dst_id, pkt.type, self.channel, pkt.seq_no, pkt.copy_id])
         if txrx == "Rx":
-            self.msg_log.append([self.env.now, "Rx", pkt.src_id, pkt.dst_id, pkt.type, self.channel, pkt.seq_no, pkt.copy_id])
+            self.msg_log.append([self.env.now, "Rx", self.id, pkt.src_id, pkt.dst_id, pkt.type, self.channel, pkt.seq_no, pkt.copy_id])
