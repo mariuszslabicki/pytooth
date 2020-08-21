@@ -15,6 +15,7 @@ for advNo in 10 20 30
 do
     for itNo in {0..9}
     do
+        echo "Advno "$advNo" iteration " $itNo
         if [ "$first_run" = true ] ; then
             python3 cmd.py --scNo 1 --advNo $advNo --simLen 100000000 --itNo $itNo >> $output_file
             first_run=false
