@@ -46,35 +46,39 @@ class Scanner(object):
             self.invalid_resp = 0
         self.recv_seq_no = -1
         self.recv_copy_id = -1
+        self.received_adv_data = {}
+        self.received_adv_packets = {}
 
     def main_loop(self):
         while True:
             if self.state == ScannerState.SCAN:
-                self.debug_info("begin")
-                self.save_event("begin")
+                # self.debug_info("begin")
+                # self.save_event("begin")
                 if self.scan_started is False:
-                    self.freq_change_time = self.env.now + const.T_scanwindow
+                    self.freq_change_time = self.env.now + const.T_scanwindow   
                     self.scan_started = True
                     if self.backoff == "BTBackoff":
                         self.backoffCount = 1
                         self.upperLimit = 1
                 try:
-                    yield self.env.process(self.scan(self.freq_change_time))
-                    self.debug_info("end")
-                    self.save_event("end")
+                    #TODO Czy to jest poprawny warunek
+                    if self.freq_change_time > self.env.now:
+                        yield self.env.process(self.scan(self.freq_change_time))
+                    # self.debug_info("end")
+                    # self.save_event("end")
                     self.state = ScannerState.FREQ_CHANGE_DELAY
 
                 except simpy.Interrupt as i:
-                    self.debug_info("break")
-                    self.save_event("break")
+                    # self.debug_info("break")
+                    # self.save_event("break")
                     if i.cause == "begin_reception":
                         self.state = ScannerState.RX
                     if i.cause == "end_reception":
                         self.state = ScannerState.ERROR_DECODING_DELAY
 
             if self.state == ScannerState.SCAN_FOR_RESP:
-                self.debug_info("begin")
-                self.save_event("begin")
+                # self.debug_info("begin")
+                # self.save_event("begin")
                 try:
                     yield self.env.process(self.scanForResp())
                     self.evaluateBackoff(receivedRSP=False)
@@ -84,8 +88,8 @@ class Scanner(object):
                         self.state = ScannerState.SCAN
                 
                 except simpy.Interrupt as i:
-                    self.debug_info("break")
-                    self.save_event("break")
+                    # self.debug_info("break")
+                    # self.save_event("break")
                     if i.cause == "begin_reception":
                         self.state = ScannerState.RX
                     if i.cause == "end_reception":
@@ -94,17 +98,24 @@ class Scanner(object):
 
 
             if self.state == ScannerState.RX:
-                self.debug_info("begin")
-                self.save_event("begin")
+                # self.debug_info("begin")
+                # self.save_event("begin")
                 try:
                     yield self.env.process(self.receive())
-                    self.debug_info("end")
-                    self.save_event("end")
-                    self.save_pkt_to_log("Rx", self.receiving_packet)
+                    # self.debug_info("end")
+                    # self.save_event("end")
+                    # self.save_pkt_to_log("Rx", self.receiving_packet)
                     if self.receiving_packet.type == packet.PktType.ADV_SCAN_IND:
                         self.recv_copy_id = self.receiving_packet.copy_id
                         self.recv_seq_no = self.receiving_packet.seq_no
-                        if self.backoff == "BTBackoff":
+                        if self.receiving_packet.src_id not in self.received_adv_data:
+                            self.received_adv_data[self.receiving_packet.src_id] = [self.recv_seq_no]
+                            self.received_adv_packets[self.receiving_packet.src_id] = 1
+                        else:
+                            self.received_adv_packets[self.receiving_packet.src_id] += 1
+                            if self.received_adv_data[self.receiving_packet.src_id][-1] != self.recv_seq_no:
+                                self.received_adv_data[self.receiving_packet.src_id].append(self.recv_seq_no)
+                        if self.backoff == "BTBackoff" and self.backoffCount > 0:
                             self.backoffCount -= 1
                         if self.backoff == None or self.backoff == "BTBackoff" and self.backoffCount == 0:
                             self.state = ScannerState.T_IFS_DELAY1
@@ -121,94 +132,94 @@ class Scanner(object):
                         self.receiving_packet = None
 
                 except simpy.Interrupt as i:
-                    self.debug_info("break")
-                    self.save_event("break")
+                    # self.debug_info("break")
+                    # self.save_event("break")
                     if i.cause == "begin_reception":
                         self.receiving_packet = None
                         self.state = ScannerState.SCAN
 
             if self.state == ScannerState.FREQ_CHANGE_DELAY:
-                self.debug_info("begin")
-                self.save_event("begin")
+                # self.debug_info("begin")
+                # self.save_event("begin")
                 yield self.env.timeout(const.T_freq_change_delay)
                 self.scan_started = False
                 self.channel += 1
                 if self.channel == 40:
                     self.channel = 37
-                self.debug_info("end")
-                self.save_event("end")
+                # self.debug_info("end")
+                # self.save_event("end")
                 self.state = ScannerState.SCAN
 
             if self.state == ScannerState.T_IFS_DELAY1:
-                self.debug_info("begin")
-                self.save_event("begin")
+                # self.debug_info("begin")
+                # self.save_event("begin")
                 yield self.env.timeout(const.T_ifs_scanner)
-                self.debug_info("end")
-                self.save_event("end")
+                # self.debug_info("end")
+                # self.save_event("end")
                 self.state = ScannerState.TX
 
             if self.state == ScannerState.TX:
-                self.debug_info("begin")
-                self.save_event("begin")
+                # self.debug_info("begin")
+                # self.save_event("begin")
                 pkt = packet.Packet(src_id = self.id, dst_id=self.adv_id, channel = self.channel, 
                         type=packet.PktType.SCAN_REQ, seq_no=self.recv_seq_no, copy_id=self.recv_copy_id)
                 yield self.env.process(self.transmit(pkt))
-                self.save_pkt_to_log("Tx", pkt)
+                # self.save_pkt_to_log("Tx", pkt)
                 self.number_of_sent_req += 1
-                self.debug_info("end")
-                self.save_event("end")
+                # self.debug_info("end")
+                # self.save_event("end")
                 if self.freq_change_time < self.env.now:
                     self.state = ScannerState.W_DELAY
                 else:
                     self.state = ScannerState.T_IFS_DELAY2
 
             if self.state == ScannerState.T_IFS_DELAY2:
-                self.debug_info("begin")
-                self.save_event("begin")
+                # self.debug_info("begin")
+                # self.save_event("begin")
                 yield self.env.timeout(const.T_ifs_scanner)
-                self.debug_info("end")
-                self.save_event("end")
+                # self.debug_info("end")
+                # self.save_event("end")
                 self.state = ScannerState.SCAN_FOR_RESP
 
             if self.state == ScannerState.ERROR_DECODING_DELAY:
-                self.debug_info("begin")
-                self.save_event("begin")
+                # self.debug_info("begin")
+                # self.save_event("begin")
                 yield self.env.timeout(const.T_error_decoding_delay)
-                self.debug_info("end")
-                self.save_event("end")
+                # self.debug_info("end")
+                # self.save_event("end")
                 self.state = ScannerState.SCAN
 
             if self.state == ScannerState.DECODING_DELAY:
-                self.debug_info("begin")
-                self.save_event("begin")
+                # self.debug_info("begin")
+                # self.save_event("begin")
                 yield self.env.timeout(const.T_decod_delay)
-                self.debug_info("end")
-                self.save_event("end")
+                # self.debug_info("end")
+                # self.save_event("end")
                 self.state = ScannerState.SCAN
 
             if self.state == ScannerState.W_DELAY:
-                self.debug_info("begin")
-                self.save_event("begin")
+                # self.debug_info("begin")
+                # self.save_event("begin")
                 #TODO poprawic liczenie W_DELAY - zgodnie z wzorem z Hernandez
                 #Zamiast T_scanresp powinno byc max T_scanresp
                 w_delay = const.T_scanreq + const.T_ifs_scanner + const.T_scanresp
                 yield self.env.timeout(w_delay)
-                self.debug_info("end")
-                self.save_event("end")
+                # self.debug_info("end")
+                # self.save_event("end")
                 self.state = ScannerState.MAX_DELAY
 
             if self.state == ScannerState.MAX_DELAY:
-                self.debug_info("begin")
-                self.save_event("begin")
+                # self.debug_info("begin")
+                # self.save_event("begin")
                 #TODO poprawic liczenie max_delay - zgodnie z wzorem z Hernandez
-                max_delay = max(const.T_decod_delay)
+                max_delay = max(const.T_decod_delay, 0)
                 yield self.env.timeout(max_delay)
-                self.debug_info("end")
-                self.save_event("end")
+                # self.debug_info("end")
+                # self.save_event("end")
                 self.state = ScannerState.SCAN
 
     def beginReception(self, packet):
-        self.ongoing_receptions[self.channel] += 1
+        self.ongoing_receptions[packet.channel] += 1
         if self.channel == packet.channel:
             if self.state == ScannerState.SCAN and self.ongoing_receptions[self.channel] == 1:
                 self.receiving_packet = packet
@@ -220,7 +231,7 @@ class Scanner(object):
                 self.action.interrupt("begin_reception")
 
     def endReception(self, packet):
-        self.ongoing_receptions[self.channel] -= 1
+        self.ongoing_receptions[packet.channel] -= 1
         if self.channel == packet.channel:
             if self.state == ScannerState.SCAN and self.ongoing_receptions[self.channel] == 0:
                 self.action.interrupt("end_reception")

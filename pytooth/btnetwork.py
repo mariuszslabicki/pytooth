@@ -106,7 +106,7 @@ class BTNetwork(object):
                         stateName = str(pytooth.scanner.ScannerState[event[4][13:]])[13:]
                         if str(event[5]) != "":
                             stateName += "_" + str(event[5][1:])
-                        writer.change(sc_vars[dev_id], event[2], stateName)
+                        writer.change(sc_vars[dev_id-10000], event[2], stateName)
 
     def printMsgLog(self):
         for entry in self.msg_log:
