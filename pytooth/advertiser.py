@@ -34,7 +34,7 @@ class Advertiser(object):
         self.beginAt = random.randint(0, self.time_to_next_packet)
         self.init_delay_start_time = None
         self.use_random_delay = True
-        self.channel = 37
+        self.channel = random.choice([37, 38, 39])
         self.receptionInterrupted = False
         self.debug_mode = False
         self.scanner_id = -1
