@@ -133,3 +133,4 @@ Pipfile.lock
 .vscode
 *.csv
 *.vcd
+.DS_Store
