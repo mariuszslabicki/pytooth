@@ -134,3 +134,4 @@ Pipfile.lock
 *.csv
 *.vcd
 .DS_Store
+*.png
