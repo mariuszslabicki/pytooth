@@ -2,12 +2,15 @@ import csv
 import matplotlib as mpl
 mpl.use('agg')
 import matplotlib.pyplot as plt 
+from operator import truediv 
 
 measures = {}
 
 execution_time = {}
 delivered_data = {}
+sent_data = {}
 delivered_packets = {}
+sent_packets = {}
 
 def process_execution_time(row):
     if row[measures["advNo"]] not in execution_time:
@@ -19,10 +22,21 @@ def process_delivered_data(row):
         delivered_data[row[measures["advNo"]]] = []
     delivered_data[row[measures["advNo"]]].append(float(row[measures["mean(rcv_data_per_device)"]]))
 
+def process_sent_data(row):
+    if row[measures["advNo"]] not in sent_data:
+        sent_data[row[measures["advNo"]]] = []
+    sent_data[row[measures["advNo"]]].append(float(row[measures["mean(sent_data_per_device)"]]))
+
 def process_delivered_packets(row):
     if row[measures["advNo"]] not in delivered_packets:
         delivered_packets[row[measures["advNo"]]] = []
     delivered_packets[row[measures["advNo"]]].append(float(row[measures["mean(rcv_packets_per_device)"]]))
+
+def process_sent_packets(row):
+    if row[measures["advNo"]] not in sent_packets:
+        sent_packets[row[measures["advNo"]]] = []
+    sent_packets[row[measures["advNo"]]].append(float(row[measures["mean(sent_packets_per_device)"]]))
+
 
 with open('output.csv', newline='') as csvfile:
     resultsreader = csv.reader(csvfile, delimiter='\t', quotechar='|')
@@ -33,7 +47,9 @@ with open('output.csv', newline='') as csvfile:
     for row in resultsreader:
         process_execution_time(row)
         process_delivered_data(row)
+        process_sent_data(row)
         process_delivered_packets(row)
+        process_sent_packets(row)
 
 fig = plt.figure(1, figsize=(12, 8))
 ax = fig.add_subplot(111)
@@ -63,6 +79,18 @@ plt.close()
 
 fig = plt.figure(1, figsize=(12, 8))
 ax = fig.add_subplot(111)
+drr_sorted = []
+for no in delivered_data.keys():
+    drr_sorted.append(list(map(truediv, delivered_data[no], sent_data[no])))
+bp = ax.boxplot(drr_sorted)
+ax.set_xticklabels(delivered_data.keys())
+ax.set_title('Data Reception Rate')
+ax.set_xlabel('Number of ADV devices')
+fig.savefig('drr.png', bbox_inches='tight')
+plt.close()
+
+fig = plt.figure(1, figsize=(12, 8))
+ax = fig.add_subplot(111)
 packets_sorted = []
 for no in delivered_packets.keys():
     packets_sorted.append(delivered_packets[no])
@@ -72,4 +100,16 @@ ax.set_title('Delivered data')
 ax.set_xlabel('Number of ADV devices')
 ax.set_ylabel('Mean received packets per device')
 fig.savefig('delivered_packages.png', bbox_inches='tight')
+plt.close()
+
+fig = plt.figure(1, figsize=(12, 8))
+ax = fig.add_subplot(111)
+prr_sorted = []
+for no in delivered_packets.keys():
+    prr_sorted.append(list(map(truediv, delivered_packets[no], sent_packets[no])))
+bp = ax.boxplot(prr_sorted)
+ax.set_xticklabels(delivered_packets.keys())
+ax.set_title('Packet Reception Rate')
+ax.set_xlabel('Number of ADV devices')
+fig.savefig('prr.png', bbox_inches='tight')
 plt.close()
