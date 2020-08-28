@@ -9,8 +9,8 @@ fi
 
 rm $output_file
 
-advTestSeq=$(seq 10 10 20)
-itNoSeq=$(seq 0 30)
+advTestSeq=$(seq 2 1 5)
+itNoSeq=$(seq 0 5)
 
 pipenv run python3 cmd.py --printHeader True >> $output_file
 

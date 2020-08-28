@@ -26,10 +26,10 @@ if args.printHeader is True:
     print("stdev(sent_data_per_device)", end="\t")
     print("mean(rcv_data_per_device)", end="\t")
     print("stdev(rcv_data_per_device)", end="\t")
-    print("mean(sent_packets_per_device)", end="\t")
-    print("stdev(sent_packets_per_device)", end="\t")
-    print("mean(rcv_packets_per_device)", end="\t")
-    print("stdev(rcv_packets_per_device)", end="\t")
+    print("mean(sent_events_per_device)", end="\t")
+    print("stdev(sent_events_per_device)", end="\t")
+    print("mean(rcv_events_per_device)", end="\t")
+    print("stdev(rcv_events_per_device)", end="\t")
     print()
     exit()
 
@@ -50,19 +50,19 @@ execution_time = time.time() - start_time
 sent_data_per_device = []
 rcv_data_per_device = []
 
-sent_packets_per_device = []
-rcv_packets_per_device = []
+sent_events_per_device = []
+rcv_events_per_device = []
 
 for advertiser in network.advertisers:
-    sent_data = advertiser.sent_data
-    received_data = len(network.scanners[0].received_adv_data[advertiser.id])
-    sent_adv = advertiser.sent_adv
-    received_packets = network.scanners[0].received_adv_packets[advertiser.id]
+    sent_data_values = advertiser.sent_data_values
+    received_data = network.scanners[0].received_adv_data[advertiser.id]
+    sent_adv_events = advertiser.sent_adv_events
+    received_events = network.scanners[0].received_adv_packets[advertiser.id]
 
-    sent_data_per_device.append(sent_data)
+    sent_data_per_device.append(sent_data_values)
     rcv_data_per_device.append(received_data)
-    sent_packets_per_device.append(sent_adv)
-    rcv_packets_per_device.append(received_packets)
+    sent_events_per_device.append(sent_adv_events)
+    rcv_events_per_device.append(received_events)
 
 print(args.scNo, end="\t")
 print(args.advNo, end="\t")
@@ -75,10 +75,10 @@ print(statistics.mean(sent_data_per_device), end="\t")
 print(statistics.stdev(sent_data_per_device), end="\t")
 print(statistics.mean(rcv_data_per_device), end="\t")
 print(statistics.stdev(rcv_data_per_device), end="\t")
-print(statistics.mean(sent_packets_per_device), end="\t")
-print(statistics.stdev(sent_packets_per_device), end="\t")
-print(statistics.mean(rcv_packets_per_device), end="\t")
-print(statistics.stdev(rcv_packets_per_device), end="\t")
+print(statistics.mean(sent_events_per_device), end="\t")
+print(statistics.stdev(sent_events_per_device), end="\t")
+print(statistics.mean(rcv_events_per_device), end="\t")
+print(statistics.stdev(rcv_events_per_device), end="\t")
 print()
 # print(execution_time, sent_data + 1, received_data, received_packets)
 

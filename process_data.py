@@ -9,8 +9,8 @@ measures = {}
 execution_time = {}
 delivered_data = {}
 sent_data = {}
-delivered_packets = {}
-sent_packets = {}
+delivered_events = {}
+sent_events = {}
 
 def process_execution_time(row):
     if row[measures["advNo"]] not in execution_time:
@@ -27,15 +27,15 @@ def process_sent_data(row):
         sent_data[row[measures["advNo"]]] = []
     sent_data[row[measures["advNo"]]].append(float(row[measures["mean(sent_data_per_device)"]]))
 
-def process_delivered_packets(row):
-    if row[measures["advNo"]] not in delivered_packets:
-        delivered_packets[row[measures["advNo"]]] = []
-    delivered_packets[row[measures["advNo"]]].append(float(row[measures["mean(rcv_packets_per_device)"]]))
+def process_delivered_events(row):
+    if row[measures["advNo"]] not in delivered_events:
+        delivered_events[row[measures["advNo"]]] = []
+    delivered_events[row[measures["advNo"]]].append(float(row[measures["mean(rcv_events_per_device)"]]))
 
-def process_sent_packets(row):
-    if row[measures["advNo"]] not in sent_packets:
-        sent_packets[row[measures["advNo"]]] = []
-    sent_packets[row[measures["advNo"]]].append(float(row[measures["mean(sent_packets_per_device)"]]))
+def process_sent_events(row):
+    if row[measures["advNo"]] not in sent_events:
+        sent_events[row[measures["advNo"]]] = []
+    sent_events[row[measures["advNo"]]].append(float(row[measures["mean(sent_events_per_device)"]]))
 
 
 with open('output.csv', newline='') as csvfile:
@@ -48,8 +48,8 @@ with open('output.csv', newline='') as csvfile:
         process_execution_time(row)
         process_delivered_data(row)
         process_sent_data(row)
-        process_delivered_packets(row)
-        process_sent_packets(row)
+        process_delivered_events(row)
+        process_sent_events(row)
 
 fig = plt.figure(1, figsize=(12, 8))
 ax = fig.add_subplot(111)
@@ -92,10 +92,10 @@ plt.close()
 fig = plt.figure(1, figsize=(12, 8))
 ax = fig.add_subplot(111)
 packets_sorted = []
-for no in delivered_packets.keys():
-    packets_sorted.append(delivered_packets[no])
+for no in delivered_events.keys():
+    packets_sorted.append(delivered_events[no])
 bp = ax.boxplot(packets_sorted)
-ax.set_xticklabels(delivered_packets.keys())
+ax.set_xticklabels(delivered_events.keys())
 ax.set_title('Delivered data')
 ax.set_xlabel('Number of ADV devices')
 ax.set_ylabel('Mean received packets per device')
@@ -105,10 +105,10 @@ plt.close()
 fig = plt.figure(1, figsize=(12, 8))
 ax = fig.add_subplot(111)
 prr_sorted = []
-for no in delivered_packets.keys():
-    prr_sorted.append(list(map(truediv, delivered_packets[no], sent_packets[no])))
+for no in delivered_events.keys():
+    prr_sorted.append(list(map(truediv, delivered_events[no], sent_events[no])))
 bp = ax.boxplot(prr_sorted)
-ax.set_xticklabels(delivered_packets.keys())
+ax.set_xticklabels(delivered_events.keys())
 ax.set_title('Packet Reception Rate')
 ax.set_xlabel('Number of ADV devices')
 fig.savefig('prr.png', bbox_inches='tight')

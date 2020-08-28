@@ -47,7 +47,9 @@ class Scanner(object):
         self.recv_seq_no = -1
         self.recv_copy_id = -1
         self.received_adv_data = {}
+        self.received_adv_events = {}
         self.received_adv_packets = {}
+        self.last_seen_adv_data = {}
 
     def main_loop(self):
         while True:
@@ -109,12 +111,16 @@ class Scanner(object):
                         self.recv_copy_id = self.receiving_packet.copy_id
                         self.recv_seq_no = self.receiving_packet.seq_no
                         if self.receiving_packet.src_id not in self.received_adv_data:
-                            self.received_adv_data[self.receiving_packet.src_id] = [self.recv_seq_no]
+                            self.received_adv_data[self.receiving_packet.src_id] = 1
                             self.received_adv_packets[self.receiving_packet.src_id] = 1
+                            self.last_seen_adv_data[self.receiving_packet.src_id] = self.recv_seq_no
                         else:
                             self.received_adv_packets[self.receiving_packet.src_id] += 1
-                            if self.received_adv_data[self.receiving_packet.src_id][-1] != self.recv_seq_no:
-                                self.received_adv_data[self.receiving_packet.src_id].append(self.recv_seq_no)
+
+                            if self.last_seen_adv_data[self.receiving_packet.src_id] != self.recv_seq_no:
+                                self.last_seen_adv_data[self.receiving_packet.src_id] = self.recv_seq_no
+                                self.received_adv_data[self.receiving_packet.src_id] += 1
+
                         if self.backoff == "BTBackoff" and self.backoffCount > 0:
                             self.backoffCount -= 1
                         if self.backoff == None or self.backoff == "BTBackoff" and self.backoffCount == 0:
