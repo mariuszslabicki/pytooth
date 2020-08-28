@@ -90,7 +90,6 @@ class Advertiser(object):
                 pkt = packet.Packet(src_id = self.id, dst_id=-1, channel = self.channel, 
                         type=packet.PktType.ADV_SCAN_IND, seq_no=self.seq_no, copy_id=self.adv_copy_id)
                 self.sent_adv += 1
-                print(self.env.now, self.seq_no, self.adv_copy_id)
                 yield self.env.process(self.transmit(pkt))
                 # self.save_pkt_to_log("Tx", pkt)
                 self.number_of_transmitted_adv += 1
