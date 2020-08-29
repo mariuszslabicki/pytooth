@@ -3,7 +3,7 @@ import pytooth.btnetwork
 network = pytooth.btnetwork.BTNetwork()
 
 network.addScanners(1, backoffType="BTBackoff")
-network.addAdvertisers(2)
+network.addAdvertisers(1)
 
 network.advertisers[0].beginAt = 100
 # network.advertisers[0].time_to_next_packet = 250000
@@ -26,9 +26,12 @@ network.evaluateNetwork(50000000)
 network.printStatsNetwork()
 network.printStatsPerDevice()
 print(network.scanners[0].received_adv_packets)
-print(network.scanners[0].received_adv_data)
+print(network.scanners[0].received_adv_data_values)
 
 # network.saveEventListCSV("1scanner_2advertisers.csv")
 # network.saveEventListVCD("output.vcd")
 # network.printMsgLog()
-network.saveMsgLogToFile("msg_log.csv")
+# network.saveMsgLogToFile("msg_log.csv")
+
+print(network.advertisers[0].number_of_sent_data_values)
+print(network.scanners[0].received_adv_data_values[0])

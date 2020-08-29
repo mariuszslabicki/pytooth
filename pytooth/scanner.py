@@ -46,7 +46,7 @@ class Scanner(object):
             self.invalid_resp = 0
         self.recv_seq_no = -1
         self.recv_copy_id = -1
-        self.received_adv_data = {}
+        self.received_adv_data_values = {}
         self.received_adv_events = {}
         self.received_adv_packets = {}
         self.last_seen_adv_data = {}
@@ -110,8 +110,8 @@ class Scanner(object):
                     if self.receiving_packet.type == packet.PktType.ADV_SCAN_IND:
                         self.recv_copy_id = self.receiving_packet.copy_id
                         self.recv_seq_no = self.receiving_packet.seq_no
-                        if self.receiving_packet.src_id not in self.received_adv_data:
-                            self.received_adv_data[self.receiving_packet.src_id] = 1
+                        if self.receiving_packet.src_id not in self.received_adv_data_values:
+                            self.received_adv_data_values[self.receiving_packet.src_id] = 1
                             self.received_adv_packets[self.receiving_packet.src_id] = 1
                             self.last_seen_adv_data[self.receiving_packet.src_id] = self.recv_seq_no
                         else:
@@ -119,7 +119,7 @@ class Scanner(object):
 
                             if self.last_seen_adv_data[self.receiving_packet.src_id] != self.recv_seq_no:
                                 self.last_seen_adv_data[self.receiving_packet.src_id] = self.recv_seq_no
-                                self.received_adv_data[self.receiving_packet.src_id] += 1
+                                self.received_adv_data_values[self.receiving_packet.src_id] += 1
 
                         if self.backoff == "BTBackoff" and self.backoffCount > 0:
                             self.backoffCount -= 1

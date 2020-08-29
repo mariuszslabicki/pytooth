@@ -23,6 +23,10 @@ class BTNetwork(object):
 
     def evaluateNetwork(self, time=10000):
         self.env.run(time)
+        for advertiser in self.advertisers:
+            for scanner in self.scanners:
+                if scanner.last_seen_adv_data[advertiser.id] == advertiser.seq_no:
+                    scanner.received_adv_data_values[advertiser.id] -= 1
 
     def beginReceptionInDevices(self, pkt):
         for scanner in self.scanners:
@@ -55,7 +59,7 @@ class BTNetwork(object):
         self.number_of_received_req = 0
         self.number_of_transmitted_resp = 0
         for adv in self.advertisers:
-            self.number_of_transmitted_adv += adv.number_of_transmitted_adv
+            self.number_of_transmitted_adv += adv.number_of_sent_adv_packets
             self.number_of_received_req += adv.number_of_received_req
             self.number_of_transmitted_resp += adv.number_of_transmitted_resp
 

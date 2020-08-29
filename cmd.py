@@ -54,9 +54,9 @@ sent_events_per_device = []
 rcv_events_per_device = []
 
 for advertiser in network.advertisers:
-    sent_data_values = advertiser.sent_data_values
-    received_data = network.scanners[0].received_adv_data[advertiser.id]
-    sent_adv_events = advertiser.sent_adv_events
+    sent_data_values = advertiser.number_of_sent_data_values
+    received_data = network.scanners[0].received_adv_data_values[advertiser.id]
+    sent_adv_events = advertiser.number_of_sent_adv_events
     received_events = network.scanners[0].received_adv_packets[advertiser.id]
 
     sent_data_per_device.append(sent_data_values)

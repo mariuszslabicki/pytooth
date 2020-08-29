@@ -9,7 +9,8 @@ T_detect = 60
 T_scaninterval = 10000000       # 500 ms  Note: scaninterval >= scanwindow
 T_scanwindow = 10000000         # 500 ms
 
-T_freq_change_delay = 16040   # 16.04 ms
+# T_freq_change_delay = 16040   # 16.04 ms
+T_freq_change_delay = 0
 
 T_init_delay = 1532
 T_radio_start_delay = 130

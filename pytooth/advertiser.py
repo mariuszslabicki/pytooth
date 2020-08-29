@@ -40,16 +40,15 @@ class Advertiser(object):
         self.scanner_id = -1
         self.adv_copy_id = 0
         self.seq_no = 0
-        self.number_of_transmitted_adv = 0
+        self.number_of_sent_adv_packets = 0
+        self.number_of_sent_adv_events = 0
+        self.number_of_sent_data_values = 0
         self.number_of_received_req = 0
         self.number_of_transmitted_resp = 0
         self.recv_seq_no = -1
         self.recv_copy_id = -1
-        self.sent_adv = 0
-        self.sent_adv_events = 0
         self.end_of_data_interval = None
         self.end_of_idle = None
-        self.sent_data_values = 0
 
     def main_loop(self):
         while True:
@@ -91,9 +90,10 @@ class Advertiser(object):
                 pkt = packet.Packet(src_id = self.id, dst_id=-1, channel = self.channel, 
                         type=packet.PktType.ADV_SCAN_IND, seq_no=self.seq_no, copy_id=self.adv_copy_id)
                 yield self.env.process(self.transmit(pkt))
-                self.sent_adv += 1
                 # self.save_pkt_to_log("Tx", pkt)
-                self.number_of_transmitted_adv += 1
+                self.number_of_sent_adv_packets += 1
+                if self.channel == 39:
+                    self.number_of_sent_adv_events += 1
                 # self.debug_info("end")
                 # self.save_event("end")
                 self.state = AdvState.RADIO_SWITCH_DELAY1
@@ -143,7 +143,6 @@ class Advertiser(object):
             if self.state == AdvState.IDLE:
                 # self.debug_info("begin")
                 # self.save_event("begin")
-                self.sent_adv_events += 1
                 yield self.env.timeout(self.end_of_idle - self.env.now)
 
                 if self.use_random_delay is True:
@@ -155,7 +154,7 @@ class Advertiser(object):
                 if self.env.now >= self.end_of_data_interval:
                     self.adv_copy_id = 0
                     self.seq_no += 1
-                    self.sent_data_values += 1
+                    self.number_of_sent_data_values += 1
                     self.end_of_data_interval = self.end_of_data_interval + const.T_data_interval
                 else:
                     self.adv_copy_id += 1
@@ -269,7 +268,7 @@ class Advertiser(object):
         self.events_list.append(["ADV", self.id, self.env.now, text, str(self.state), channel])
 
     def print_stats(self):
-        print("ADV:", self.id, "\tADV", self.number_of_transmitted_adv, "\tREQ", self.number_of_received_req, "\tRESP", self.number_of_transmitted_resp)
+        print("ADV:", self.id, "\tADV", self.number_of_sent_adv_packets, "\tREQ", self.number_of_received_req, "\tRESP", self.number_of_transmitted_resp)
 
     def save_pkt_to_log(self, txrx, pkt):
         if txrx == "Tx":
