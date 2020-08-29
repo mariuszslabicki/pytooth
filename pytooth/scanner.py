@@ -206,9 +206,7 @@ class Scanner(object):
             if self.state == ScannerState.W_DELAY:
                 # self.debug_info("begin")
                 # self.save_event("begin")
-                #TODO poprawic liczenie W_DELAY - zgodnie z wzorem z Hernandez
-                #Zamiast T_scanresp powinno byc max T_scanresp
-                w_delay = const.T_scanreq + const.T_ifs_scanner + const.T_scanresp
+                w_delay = const.T_scanreq + const.T_ifs_scanner + const.T_max_scan_resp
                 yield self.env.timeout(w_delay)
                 # self.debug_info("end")
                 # self.save_event("end")
@@ -217,8 +215,7 @@ class Scanner(object):
             if self.state == ScannerState.MAX_DELAY:
                 # self.debug_info("begin")
                 # self.save_event("begin")
-                #TODO poprawic liczenie max_delay - zgodnie z wzorem z Hernandez
-                max_delay = max(const.T_decod_delay, 0)
+                max_delay = max(const.T_decod_delay, const.T_freq_change_delay)
                 yield self.env.timeout(max_delay)
                 # self.debug_info("end")
                 # self.save_event("end")
