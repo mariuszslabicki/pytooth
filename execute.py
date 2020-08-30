@@ -14,6 +14,7 @@ def f(adv_no, sc_no, iterationNumber, simulationLength, timeToNextAE):
     network.addScanners(sc_no, backoffType=None)
     network.addAdvertisers(adv_no, timeToNextAE)
     start_time = time.time()
+    print(adv_no, sc_no, iterationNumber, simulationLength, timeToNextAE)
     network.evaluateNetwork(simulationLength)
     execution_time = time.time() - start_time
     
