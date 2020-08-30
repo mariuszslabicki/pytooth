@@ -19,7 +19,7 @@ class AdvState(Enum):
     BEGIN_FSM = 12
 
 class Advertiser(object):
-    def __init__(self, id, env, events_list, msg_log, network):
+    def __init__(self, id, env, events_list, msg_log, network, time_to_next_AE):
         self.id = id
         self.env = env
         self.packets_sent = 0
@@ -31,8 +31,8 @@ class Advertiser(object):
         self.msg_log = msg_log
         self.network = network
         self.state = AdvState.BEGIN_FSM
-        self.time_to_next_packet = const.T_idle
         self.init_delay_start_time = None
+        self.time_to_next_AE = time_to_next_AE
         self.use_random_delay = True
         self.channel = 37
         self.receptionInterrupted = False
@@ -55,14 +55,14 @@ class Advertiser(object):
             if self.state == AdvState.BEGIN_FSM:
                 # self.debug_info("begin")
                 # self.save_event("begin")
-                random_delay = random.randint(0, const.T_idle)
+                random_delay = random.randint(0, self.time_to_next_AE)
                 yield self.env.timeout(random_delay)
                 self.end_of_data_interval = self.env.now + const.T_data_interval
                 if self.use_random_delay is True:
                     random_shift = random.randint(0, 10000)
                 else:
                     random_shift = 0
-                self.end_of_idle = self.env.now + const.T_idle + random_shift
+                self.end_of_idle = self.env.now + self.time_to_next_AE + random_shift
                 # self.debug_info("end")
                 # self.save_event("end")
                 self.state = AdvState.INIT_DELAY
@@ -149,7 +149,7 @@ class Advertiser(object):
                     random_shift = random.randint(0, 10000)
                 else:
                     random_shift = 0
-                self.end_of_idle += const.T_idle + random_shift
+                self.end_of_idle += self.time_to_next_AE + random_shift
 
                 if self.env.now >= self.end_of_data_interval:
                     self.adv_copy_id = 0

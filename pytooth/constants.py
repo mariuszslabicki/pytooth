@@ -19,6 +19,5 @@ T_standby_delay = 155
 T_error_decoding_delay = 144
 T_decod_delay = 194
 
-T_idle = 250000
 T_max_scan_resp = 376
 T_data_interval = 10000000

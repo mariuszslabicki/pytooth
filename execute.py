@@ -9,10 +9,10 @@ import ast
 import multiprocessing
 import csv
 
-def f(adv_no, sc_no, iterationNumber, simulationLength):
+def f(adv_no, sc_no, iterationNumber, simulationLength, timeToNextAE):
     network = pytooth.btnetwork.BTNetwork()
     network.addScanners(sc_no, backoffType=None)
-    network.addAdvertisers(adv_no)
+    network.addAdvertisers(adv_no, timeToNextAE)
     start_time = time.time()
     network.evaluateNetwork(simulationLength)
     execution_time = time.time() - start_time
@@ -36,6 +36,7 @@ def f(adv_no, sc_no, iterationNumber, simulationLength):
     result = []
     result.append(sc_no)
     result.append(adv_no)
+    result.append(timeToNextAE)
     result.append(iterationNumber)
     result.append(simulationLength)
     result.append(execution_time)
@@ -67,17 +68,20 @@ if __name__ == '__main__':
     scanner_list = ast.literal_eval(parameters["NoOfScanners"])
     no_of_iterations = ast.literal_eval(parameters["NoOfIterations"])
     no_of_iterations = range(no_of_iterations)
+    time_to_next_AE_list = ast.literal_eval(parameters["TimeToNextAE"])
 
     if type(scanner_list) is int:
         scanner_list = [scanner_list]
 
+    if type(time_to_next_AE_list) is int:
+        time_to_next_AE_list = [time_to_next_AE_list]
+
     simulationLength = [parameters["SimulationLength"]]
 
-    parameters = product(adv_list, scanner_list, no_of_iterations, simulationLength)
+    parameters = product(adv_list, scanner_list, no_of_iterations, simulationLength, time_to_next_AE_list)
     results = []
     with multiprocessing.Pool(processes=4) as pool:
         results = pool.starmap(f, parameters)
-        # results.append(results)
 
     file = open("output.csv",'w') 
 
@@ -85,6 +89,7 @@ if __name__ == '__main__':
 
     file.write("scNo" + separator)
     file.write("advNo" + separator)
+    file.write("timeToNextAE" + separator)
     file.write("itNo" + separator)
     file.write("simLen" + separator)
     file.write("execution_time" + separator)
