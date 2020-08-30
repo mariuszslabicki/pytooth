@@ -69,6 +69,7 @@ if __name__ == '__main__':
     no_of_iterations = ast.literal_eval(parameters["NoOfIterations"])
     no_of_iterations = range(no_of_iterations)
     time_to_next_AE_list = ast.literal_eval(parameters["TimeToNextAE"])
+    no_of_cores = ast.literal_eval(parameters["NoOfCores"])
 
     if type(scanner_list) is int:
         scanner_list = [scanner_list]
@@ -80,7 +81,7 @@ if __name__ == '__main__':
 
     parameters = product(adv_list, scanner_list, no_of_iterations, simulationLength, time_to_next_AE_list)
     results = []
-    with multiprocessing.Pool(processes=4) as pool:
+    with multiprocessing.Pool(processes=no_of_cores) as pool:
         results = pool.starmap(f, parameters)
 
     file = open("output.csv",'w') 
