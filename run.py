@@ -3,7 +3,7 @@ import pytooth.btnetwork
 network = pytooth.btnetwork.BTNetwork()
 
 network.addScanners(1, backoffType="BTBackoff")
-network.addAdvertisers(1)
+network.addAdvertisers(1, 100000)
 
 network.advertisers[0].beginAt = 100
 # network.advertisers[0].time_to_next_packet = 250000
