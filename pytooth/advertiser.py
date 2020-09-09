@@ -44,9 +44,12 @@ class Advertiser(object):
         self.seq_no = 0
         self.number_of_sent_adv_packets = 0
         self.number_of_sent_adv_events = 0
+        self.number_of_delivered_adv_events = 0
         self.number_of_sent_data_values = 0
+        self.number_of_sent_req_by_scanner = 0
         self.number_of_received_req = 0
         self.number_of_transmitted_resp = 0
+        self.number_of_delivered_resp = 0
         self.recv_seq_no = -1
         self.recv_copy_id = -1
         self.end_of_data_interval = None
@@ -79,8 +82,6 @@ class Advertiser(object):
                         type=packet.PktType.ADV_SCAN_IND, seq_no=self.seq_no, copy_id=self.adv_copy_id)
                 yield self.env.process(self.transmit(pkt))
                 self.number_of_sent_adv_packets += 1
-                if self.channel == 39:
-                    self.number_of_sent_adv_events += 1
                 self.state = AdvState.RADIO_SWITCH_DELAY1
                 
             if self.state == AdvState.RADIO_SWITCH_DELAY1:
@@ -133,6 +134,7 @@ class Advertiser(object):
                 yield self.env.process(self.receive(self.receiving_packet))
                 if self.receptionInterrupted == False and self.receiving_packet.dst_id == self.id:
                     self.request_received = True
+                    self.number_of_sent_adv_events += 1
                     self.number_of_received_req += 1
                     self.state = AdvState.RADIO_SWITCH_DELAY2
                     self.scanner_id = self.receiving_packet.src_id
@@ -140,6 +142,7 @@ class Advertiser(object):
                     self.recv_seq_no = self.receiving_packet.seq_no
                 else:
                     if self.channel == 39:
+                        self.number_of_sent_adv_events += 1
                         self.state = AdvState.POSTPROCESSING_DELAY
                         self.channel = 37
                     else:

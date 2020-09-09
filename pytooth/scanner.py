@@ -119,7 +119,7 @@ class Scanner(object):
 
                             if self.last_seen_adv_data[self.receiving_packet.src_id] != self.recv_seq_no:
                                 self.last_seen_adv_data[self.receiving_packet.src_id] = self.recv_seq_no
-                                self.received_adv_data_values[self.receiving_packet.src_id] += 1
+                                self.network.advertisers[self.receiving_packet.src_id].number_of_delivered_adv_events += 1
                         self.state = ScannerState.DECODING_DELAY
                         if self.backoff == "BTBackoff" and self.backoffCount > 0:
                             self.backoffCount -= 1
@@ -134,6 +134,7 @@ class Scanner(object):
                     elif self.receiving_packet.type == packet.PktType.SCAN_RSP:
                         if self.receiving_packet.dst_id == self.id:
                             self.evaluateBackoff(receivedRSP=True)
+                        self.network.advertisers[self.receiving_packet.src_id].number_of_delivered_resp += 1
                         self.state = ScannerState.DECODING_DELAY
                         self.receiving_packet = None
 
@@ -170,6 +171,7 @@ class Scanner(object):
                 pkt = packet.Packet(src_id = self.id, dst_id=self.adv_id, channel = self.channel, 
                         type=packet.PktType.SCAN_REQ, seq_no=self.recv_seq_no, copy_id=self.recv_copy_id)
                 yield self.env.process(self.transmit(pkt))
+                self.network.advertisers[self.adv_id].number_of_sent_req_by_scanner += 1
                 # self.save_pkt_to_log("Tx", pkt)
                 self.number_of_sent_req += 1
                 # self.debug_info("end")
