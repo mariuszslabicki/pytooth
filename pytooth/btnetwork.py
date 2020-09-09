@@ -17,9 +17,9 @@ class BTNetwork(object):
         for i in range(number):
             self.scanners.append(pytooth.scanner.Scanner(i+10000, self.env, self.events_list, self.msg_log, self, backoffType))
 
-    def addAdvertisers(self, number, time_to_next_AE):
+    def addAdvertisers(self, number, time_to_next_AE, stop_advertising):
         for i in range(number):
-            self.advertisers.append(pytooth.advertiser.Advertiser(i, self.env, self.events_list, self.msg_log, self, time_to_next_AE))
+            self.advertisers.append(pytooth.advertiser.Advertiser(i, self.env, self.events_list, self.msg_log, self, time_to_next_AE, stop_advertising))
 
     def evaluateNetwork(self, time=10000):
         self.env.run(time)

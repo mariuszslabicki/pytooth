@@ -121,16 +121,15 @@ class Scanner(object):
                                 self.last_seen_adv_data[self.receiving_packet.src_id] = self.recv_seq_no
                                 self.received_adv_data_values[self.receiving_packet.src_id] += 1
                         self.state = ScannerState.DECODING_DELAY
-                        # Turned off to check FSM behaviour
-                        # if self.backoff == "BTBackoff" and self.backoffCount > 0:
-                        #     self.backoffCount -= 1
-                        # if self.backoff == None or self.backoff == "BTBackoff" and self.backoffCount == 0:
-                        #     self.state = ScannerState.T_IFS_DELAY1
-                        #     self.adv_id = self.receiving_packet.src_id
-                        # if self.backoff == "BTBackoff" and self.backoffCount > 0:
-                        #     self.state = ScannerState.DECODING_DELAY
-                        # self.receiving_packet = None
-                        # self.number_of_received_adv += 1
+                        if self.backoff == "BTBackoff" and self.backoffCount > 0:
+                            self.backoffCount -= 1
+                        if self.backoff == None or self.backoff == "BTBackoff" and self.backoffCount == 0:
+                            self.state = ScannerState.T_IFS_DELAY1
+                            self.adv_id = self.receiving_packet.src_id
+                        if self.backoff == "BTBackoff" and self.backoffCount > 0:
+                            self.state = ScannerState.DECODING_DELAY
+                        self.receiving_packet = None
+                        self.number_of_received_adv += 1
 
                     elif self.receiving_packet.type == packet.PktType.SCAN_RSP:
                         if self.receiving_packet.dst_id == self.id:
