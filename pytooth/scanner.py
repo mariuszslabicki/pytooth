@@ -114,6 +114,7 @@ class Scanner(object):
                             self.received_adv_data_values[self.receiving_packet.src_id] = 1
                             self.received_adv_packets[self.receiving_packet.src_id] = 1
                             self.last_seen_adv_data[self.receiving_packet.src_id] = self.recv_seq_no
+                            self.network.advertisers[self.receiving_packet.src_id].number_of_delivered_adv_events = 1
                         else:
                             self.received_adv_packets[self.receiving_packet.src_id] += 1
 
