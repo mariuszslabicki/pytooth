@@ -50,6 +50,7 @@ class Advertiser(object):
         self.number_of_received_req = 0
         self.number_of_transmitted_resp = 0
         self.number_of_delivered_resp = 0
+        self.when_delivered_data = []
         self.recv_seq_no = -1
         self.recv_copy_id = -1
         self.end_of_data_interval = None
@@ -134,6 +135,7 @@ class Advertiser(object):
                 yield self.env.process(self.receive(self.receiving_packet))
                 if self.receptionInterrupted == False and self.receiving_packet.dst_id == self.id:
                     self.request_received = True
+                    self.when_delivered_data.append(self.receiving_packet.copy_id)
                     self.number_of_sent_adv_events += 1
                     self.number_of_received_req += 1
                     self.state = AdvState.RADIO_SWITCH_DELAY2
