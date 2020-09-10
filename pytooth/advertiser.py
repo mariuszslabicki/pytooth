@@ -19,7 +19,7 @@ class AdvState(Enum):
     BEGIN_FSM = 12
 
 class Advertiser(object):
-    def __init__(self, id, env, events_list, msg_log, network, time_to_next_AE, stop_advertising=False):
+    def __init__(self, id, env, events_list, msg_log, network, advertising_interval, data_interval, stop_advertising=False):
         self.id = id
         self.env = env
         self.packets_sent = 0
@@ -32,7 +32,8 @@ class Advertiser(object):
         self.network = network
         self.state = AdvState.BEGIN_FSM
         self.init_delay_start_time = None
-        self.time_to_next_AE = time_to_next_AE
+        self.advertising_interval = advertising_interval
+        self.data_interval = data_interval
         self.stop_advertising = stop_advertising
         self.request_received = False
         self.use_random_delay = True
@@ -46,11 +47,12 @@ class Advertiser(object):
         self.number_of_sent_adv_events = 0
         self.number_of_delivered_adv_events = 0
         self.number_of_sent_data_values = 0
+        self.number_of_delivered_data_values = 0
         self.number_of_sent_req_by_scanner = 0
         self.number_of_received_req = 0
         self.number_of_transmitted_resp = 0
         self.number_of_delivered_resp = 0
-        self.when_delivered_data = []
+        self.when_delivered_data = {}
         self.recv_seq_no = -1
         self.recv_copy_id = -1
         self.end_of_data_interval = None
@@ -59,14 +61,10 @@ class Advertiser(object):
     def main_loop(self):
         while True:
             if self.state == AdvState.BEGIN_FSM:
-                random_delay = random.randint(0, self.time_to_next_AE)
+                random_delay = random.randint(0, self.advertising_interval)
                 yield self.env.timeout(random_delay)
-                self.end_of_data_interval = self.env.now + const.T_data_interval
-                if self.use_random_delay is True:
-                    random_shift = random.randint(0, 10000)
-                else:
-                    random_shift = 0
-                self.end_of_idle = self.env.now + self.time_to_next_AE + random_shift
+                self.end_of_data_interval = self.env.now + self.data_interval
+                self.end_of_idle = self.env.now + self.advertising_interval
                 self.state = AdvState.INIT_DELAY
 
             if self.state == AdvState.INIT_DELAY:
@@ -83,6 +81,8 @@ class Advertiser(object):
                         type=packet.PktType.ADV_SCAN_IND, seq_no=self.seq_no, copy_id=self.adv_copy_id)
                 yield self.env.process(self.transmit(pkt))
                 self.number_of_sent_adv_packets += 1
+                if self.channel == 39:
+                    self.number_of_sent_adv_events += 1
                 self.state = AdvState.RADIO_SWITCH_DELAY1
                 
             if self.state == AdvState.RADIO_SWITCH_DELAY1:
@@ -115,14 +115,15 @@ class Advertiser(object):
                     random_shift = random.randint(0, 10000)
                 else:
                     random_shift = 0
-                self.end_of_idle += self.time_to_next_AE + random_shift
+                self.end_of_idle += self.advertising_interval + random_shift
 
                 if self.env.now >= self.end_of_data_interval:
+                    if self.request_received is False or self.stop_advertising is False:
+                        self.number_of_sent_data_values += 1
                     self.request_received = False
                     self.adv_copy_id = 0
                     self.seq_no += 1
-                    self.number_of_sent_data_values += 1
-                    self.end_of_data_interval = self.end_of_data_interval + const.T_data_interval
+                    self.end_of_data_interval = self.end_of_data_interval + self.data_interval
                 else:
                     self.adv_copy_id += 1
                 if self.request_received is False or self.stop_advertising is False:
@@ -135,8 +136,12 @@ class Advertiser(object):
                 yield self.env.process(self.receive(self.receiving_packet))
                 if self.receptionInterrupted == False and self.receiving_packet.dst_id == self.id:
                     self.request_received = True
-                    self.when_delivered_data.append(self.receiving_packet.copy_id)
-                    self.number_of_sent_adv_events += 1
+                    if self.stop_advertising is True:
+                        self.number_of_sent_data_values += 1
+                    if self.receiving_packet.copy_id+1 not in self.when_delivered_data:
+                        self.when_delivered_data[self.receiving_packet.copy_id+1] = 1
+                    else:
+                        self.when_delivered_data[self.receiving_packet.copy_id+1] += 1
                     self.number_of_received_req += 1
                     self.state = AdvState.RADIO_SWITCH_DELAY2
                     self.scanner_id = self.receiving_packet.src_id
@@ -144,7 +149,6 @@ class Advertiser(object):
                     self.recv_seq_no = self.receiving_packet.seq_no
                 else:
                     if self.channel == 39:
-                        self.number_of_sent_adv_events += 1
                         self.state = AdvState.POSTPROCESSING_DELAY
                         self.channel = 37
                     else:
@@ -161,8 +165,9 @@ class Advertiser(object):
                         type=packet.PktType.SCAN_RSP, seq_no=self.recv_seq_no, copy_id=self.recv_copy_id)
                 yield self.env.process(self.transmit(pkt))
                 self.number_of_transmitted_resp += 1
-                if self.stop_advertising is True and self.request_received is True:
+                if self.stop_advertising is True and self.request_received is True and self.channel == 39:
                     self.state = AdvState.IDLE
+                    self.channel = 37
                 else:
                     if self.channel == 39:
                         self.state = AdvState.POSTPROCESSING_DELAY

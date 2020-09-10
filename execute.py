@@ -9,23 +9,24 @@ import ast
 import multiprocessing
 import json
 
-def f(adv_no, sc_no, iterationNumber, simulationLength, timeToNextAE, stopAdvertising):
+def f(adv_no, sc_no, iterationNumber, simulationLength, advertisingInterval, dataInterval, stopAdvertising):
     network = pytooth.btnetwork.BTNetwork()
     network.addScanners(sc_no, backoffType=None)
-    network.addAdvertisers(adv_no, timeToNextAE, stopAdvertising)
+    network.addAdvertisers(adv_no, advertisingInterval, dataInterval, stopAdvertising)
     start_time = time.time()
-    print(adv_no, sc_no, iterationNumber, simulationLength, timeToNextAE, stopAdvertising)
+    print(adv_no, sc_no, iterationNumber, simulationLength, advertisingInterval, stopAdvertising)
     network.evaluateNetwork(simulationLength)
     execution_time = time.time() - start_time
 
     row = {}
-    row["adv_no"] = adv_no
-    row["sc_no"] = sc_no
+    row["numberOfAdvertisers"] = adv_no
+    row["numberOfScanners"] = sc_no
     row["iterationNumber"] = iterationNumber
-    row["simulationLength"] = simulationLength
-    row["timeToNextAE"] = timeToNextAE
+    row["simulationLength"] = simulationLength//1000
+    row["advertisingInterval"] = advertisingInterval//1000
+    row["dataInterval"] = dataInterval//1000
     row["stopAdvertising"] = stopAdvertising
-    row["execution_time"] = execution_time
+    row["executionTime"] = execution_time
 
     advertisers = []
 
@@ -35,10 +36,11 @@ def f(adv_no, sc_no, iterationNumber, simulationLength, timeToNextAE, stopAdvert
         new_dict["number_of_sent_adv_events"] = advertiser.number_of_sent_adv_events
         new_dict["number_of_sent_adv_events"] = advertiser.number_of_sent_adv_events
         new_dict["number_of_delivered_adv_events"] = advertiser.number_of_delivered_adv_events
-        new_dict["number_of_sent_data_values"] = advertiser.number_of_sent_data_values
+        new_dict["number_of_sent_finished_data_series"] = advertiser.number_of_sent_data_values
+        new_dict["number_of_delivered_data"] = advertiser.number_of_delivered_data_values
         new_dict["number_of_sent_req_by_scanner"] = advertiser.number_of_sent_req_by_scanner
-        new_dict["number_of_received_req"] = advertiser.number_of_received_req
-        new_dict["number_of_transmitted_resp"] = advertiser.number_of_transmitted_resp
+        new_dict["number_of_delivered_req"] = advertiser.number_of_received_req
+        new_dict["number_of_sent_resp"] = advertiser.number_of_transmitted_resp
         new_dict["number_of_delivered_resp"] = advertiser.number_of_delivered_resp
         if stopAdvertising is True:
             new_dict["when_delivered_data"] = advertiser.when_delivered_data
@@ -65,25 +67,29 @@ if __name__ == '__main__':
     scanner_list = ast.literal_eval(parameters["NoOfScanners"])
     no_of_iterations = ast.literal_eval(parameters["NoOfIterations"])
     no_of_iterations = range(no_of_iterations)
-    time_to_next_AE_list = ast.literal_eval(parameters["TimeToNextAE"])
+    advertising_interval_list = ast.literal_eval(parameters["AdvertisingInterval"])
+    data_interval_list = ast.literal_eval(parameters["DataInterval"])
     no_of_cores = ast.literal_eval(parameters["NoOfCores"])
+    simulationLength = ast.literal_eval(parameters["SimulationLength"])
     stop_advertising = [True, False]
     output_filename = parameters["OutputFilename"]
 
     if type(scanner_list) is int:
         scanner_list = [scanner_list]
 
-    if type(time_to_next_AE_list) is int:
-        time_to_next_AE_list = [time_to_next_AE_list]
+    if type(advertising_interval_list) is int:
+        advertising_interval_list = [advertising_interval_list]
 
-    simulationLength = ast.literal_eval(parameters["SimulationLength"])
+    if type(data_interval_list) is int:
+        data_interval_list = [data_interval_list]
+
     if type(simulationLength) is int:
         simulationLength = [simulationLength]
 
-    parameters = product(adv_list, scanner_list, no_of_iterations, simulationLength, time_to_next_AE_list, stop_advertising)
+    sim_parameters = product(adv_list, scanner_list, no_of_iterations, simulationLength, advertising_interval_list, data_interval_list, stop_advertising)
     results = []
     with multiprocessing.Pool(processes=no_of_cores) as pool:
-        results = pool.starmap(f, parameters)
+        results = pool.starmap(f, sim_parameters)
 
     with open(output_filename, 'w') as f:
         json.dump(results, f, ensure_ascii=False, indent=4)
