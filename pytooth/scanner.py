@@ -44,6 +44,7 @@ class Scanner(object):
             self.upperLimit = 0
             self.valid_resp = 0
             self.invalid_resp = 0
+            self.upperLimitHistory = {}
         self.recv_seq_no = -1
         self.recv_copy_id = -1
         self.received_adv_data_values = {}
@@ -62,6 +63,8 @@ class Scanner(object):
                     if self.backoff == "BTBackoff":
                         self.backoffCount = 1
                         self.upperLimit = 1
+                        # self.upperLimitHistory.append([self.env.now, self.upperLimit])
+                        self.upperLimitHistory[self.env.now] = self.upperLimit
                 try:
                     #TODO Czy to jest poprawny warunek
                     if self.freq_change_time > self.env.now:
@@ -271,6 +274,8 @@ class Scanner(object):
                     self.valid_resp = 0
                     if self.upperLimit < 1:
                         self.upperLimit = 1
+                    # self.upperLimitHistory.append([self.env.now, self.upperLimit])
+                    self.upperLimitHistory[self.env.now] = self.upperLimit
                 self.backoffCount = random.randint(1, self.upperLimit)
         if receivedRSP is False:
             if self.backoff == "BTBackoff":
@@ -281,6 +286,8 @@ class Scanner(object):
                     self.invalid_resp = 0
                     if self.upperLimit > 256:
                         self.upperLimit = 256
+                    # self.upperLimitHistory.append([self.env.now, self.upperLimit])
+                    self.upperLimitHistory[self.env.now] = self.upperLimit
                 self.backoffCount = random.randint(1, self.upperLimit)
 
 
