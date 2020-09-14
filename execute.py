@@ -11,7 +11,7 @@ import json
 
 def f(adv_no, sc_no, iterationNumber, simulationLength, advertisingInterval, dataInterval, stopAdvertising):
     network = pytooth.btnetwork.BTNetwork()
-    network.addScanners(sc_no, backoffType=None)
+    network.addScanners(sc_no, backoffType="BTBackoff")
     network.addAdvertisers(adv_no, advertisingInterval, dataInterval, stopAdvertising)
     start_time = time.time()
     print(adv_no, sc_no, iterationNumber, simulationLength, advertisingInterval, stopAdvertising)
@@ -48,6 +48,17 @@ def f(adv_no, sc_no, iterationNumber, simulationLength, advertisingInterval, dat
         advertisers.append(new_dict)
 
     row["advertisers"] = advertisers
+
+    scanners = []
+
+    for scanner in network.scanners:
+        new_dict = {}
+        new_dict["scanner_id"] = scanner.id
+        new_dict["backoff_upperlimit_history"] = scanner.upperLimitHistory
+        
+        scanners.append(new_dict)
+
+    row["scanners"] = scanners
 
     return row
 

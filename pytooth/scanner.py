@@ -40,11 +40,12 @@ class Scanner(object):
         self.number_of_sent_req = 0
         self.backoff = backoff
         if self.backoff == "BTBackoff":
-            self.backoffCount = 0
-            self.upperLimit = 0
+            self.backoffCount = 1
+            self.upperLimit = 1
             self.valid_resp = 0
             self.invalid_resp = 0
             self.upperLimitHistory = {}
+            self.upperLimitHistory[0] = self.upperLimit
         self.recv_seq_no = -1
         self.recv_copy_id = -1
         self.received_adv_data_values = {}
@@ -60,11 +61,9 @@ class Scanner(object):
                 if self.scan_started is False:
                     self.freq_change_time = self.env.now + const.T_scanwindow   
                     self.scan_started = True
-                    if self.backoff == "BTBackoff":
-                        self.backoffCount = 1
-                        self.upperLimit = 1
-                        # self.upperLimitHistory.append([self.env.now, self.upperLimit])
-                        self.upperLimitHistory[self.env.now] = self.upperLimit
+                    # if self.backoff == "BTBackoff":
+                    #     self.backoffCount = 1
+                    #     self.upperLimit = 1
                 try:
                     #TODO Czy to jest poprawny warunek
                     if self.freq_change_time > self.env.now:
@@ -270,24 +269,20 @@ class Scanner(object):
                 self.valid_resp += 1
                 self.invalid_resp = 0
                 if self.valid_resp == 2:
-                    self.upperLimit = self.upperLimit / 2
                     self.valid_resp = 0
-                    if self.upperLimit < 1:
-                        self.upperLimit = 1
-                    # self.upperLimitHistory.append([self.env.now, self.upperLimit])
-                    self.upperLimitHistory[self.env.now] = self.upperLimit
+                    if self.upperLimit > 1:
+                        self.upperLimit = int(self.upperLimit / 2)
+                        self.upperLimitHistory[self.env.now] = self.upperLimit
                 self.backoffCount = random.randint(1, self.upperLimit)
         if receivedRSP is False:
             if self.backoff == "BTBackoff":
                 self.invalid_resp += 1
                 self.valid_resp = 0
                 if self.invalid_resp == 2:
-                    self.upperLimit = self.upperLimit * 2
                     self.invalid_resp = 0
-                    if self.upperLimit > 256:
-                        self.upperLimit = 256
-                    # self.upperLimitHistory.append([self.env.now, self.upperLimit])
-                    self.upperLimitHistory[self.env.now] = self.upperLimit
+                    if self.upperLimit < 256:
+                        self.upperLimit = self.upperLimit * 2
+                        self.upperLimitHistory[self.env.now] = self.upperLimit
                 self.backoffCount = random.randint(1, self.upperLimit)
 
 
