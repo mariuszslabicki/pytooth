@@ -9,24 +9,30 @@ import ast
 import multiprocessing
 import json
 
-def f(adv_no, sc_no, iterationNumber, simulationLength, advertisingInterval, dataInterval, stopAdvertising):
+def f(adv_no, sc_no, scannerType, iterationNumber, simulationLength, advertisingInterval, dataInterval, stopAdvertising):
+    
     network = pytooth.btnetwork.BTNetwork()
-    network.addScanners(sc_no, backoffType="BTBackoff")
+    network.addScanners(sc_no, scannerType, backoffType="BTBackoff")
     network.addAdvertisers(adv_no, advertisingInterval, dataInterval, stopAdvertising)
     start_time = time.time()
     print(adv_no, sc_no, iterationNumber, simulationLength, advertisingInterval, stopAdvertising)
-    network.evaluateNetwork(simulationLength)
+    if not(stopAdvertising is True and scannerType == "Passive"):
+        network.evaluateNetwork(simulationLength)
     execution_time = time.time() - start_time
 
     row = {}
     row["numberOfAdvertisers"] = adv_no
     row["numberOfScanners"] = sc_no
+    row["scannerType"] = scannerType
     row["iterationNumber"] = iterationNumber
     row["simulationLength"] = simulationLength//1000
     row["advertisingInterval"] = advertisingInterval//1000
     row["dataInterval"] = dataInterval//1000
     row["stopAdvertising"] = stopAdvertising
     row["executionTime"] = execution_time
+
+    if stopAdvertising is True and scannerType == "Passive":
+        return row
 
     advertisers = []
 
@@ -73,9 +79,9 @@ if __name__ == '__main__':
     config.read(args.inputCfg)
 
     parameters = config["BTNETWORK"]
-
     adv_list = ast.literal_eval(parameters["NoOfAdvertisers"])
     scanner_list = ast.literal_eval(parameters["NoOfScanners"])
+    scanner_type = parameters["ScannerType"]
     no_of_iterations = ast.literal_eval(parameters["NoOfIterations"])
     no_of_iterations = range(no_of_iterations)
     advertising_interval_list = ast.literal_eval(parameters["AdvertisingInterval"])
@@ -88,6 +94,9 @@ if __name__ == '__main__':
     if type(scanner_list) is int:
         scanner_list = [scanner_list]
 
+    if type(scanner_type) is str:
+        scanner_type = [scanner_type]
+
     if type(advertising_interval_list) is int:
         advertising_interval_list = [advertising_interval_list]
 
@@ -97,10 +106,11 @@ if __name__ == '__main__':
     if type(simulationLength) is int:
         simulationLength = [simulationLength]
 
-    sim_parameters = product(adv_list, scanner_list, no_of_iterations, simulationLength, advertising_interval_list, data_interval_list, stop_advertising)
+    sim_parameters = product(adv_list, scanner_list, scanner_type, no_of_iterations, simulationLength, advertising_interval_list, data_interval_list, stop_advertising)
     results = []
     with multiprocessing.Pool(processes=no_of_cores) as pool:
         results = pool.starmap(f, sim_parameters)
 
     with open(output_filename, 'w') as f:
+        json.dump(dict(parameters), f, ensure_ascii=False, indent=4)
         json.dump(results, f, ensure_ascii=False, indent=4)
