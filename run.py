@@ -2,7 +2,7 @@ import pytooth.btnetwork
 
 network = pytooth.btnetwork.BTNetwork()
 
-network.addScanners(1, backoffType="BTBackoff")
+network.addScanners(1, scannerType="Passive", backoffType="BTBackoff")
 network.addAdvertisers(10, advertising_interval=100000, data_interval=1000000, stop_advertising=True)
 
 network.evaluateNetwork(40000000)

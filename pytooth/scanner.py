@@ -19,7 +19,7 @@ class ScannerState(Enum):
     SCAN_FOR_RESP = 12
 
 class Scanner(object):
-    def __init__(self, id, env, events_list, msg_log, network, backoff=None):
+    def __init__(self, id, env, events_list, msg_log, network, backoff=None, scannerType="Active"):
         self.env = env
         self.id = id
         self.received = 0
@@ -46,6 +46,7 @@ class Scanner(object):
             self.invalid_resp = 0
             self.upperLimitHistory = {}
             self.upperLimitHistory[0] = self.upperLimit
+        self.scannerType = scannerType
         self.recv_seq_no = -1
         self.recv_copy_id = -1
         self.received_adv_data_values = {}
@@ -125,13 +126,14 @@ class Scanner(object):
                                 self.last_seen_adv_data[self.receiving_packet.src_id] = self.recv_seq_no
                                 self.network.advertisers[self.receiving_packet.src_id].number_of_delivered_data_values += 1
                         self.state = ScannerState.DECODING_DELAY
-                        if self.backoff == "BTBackoff" and self.backoffCount > 0:
-                            self.backoffCount -= 1
-                        if self.backoff == None or self.backoff == "BTBackoff" and self.backoffCount == 0:
-                            self.state = ScannerState.T_IFS_DELAY1
-                            self.adv_id = self.receiving_packet.src_id
-                        if self.backoff == "BTBackoff" and self.backoffCount > 0:
-                            self.state = ScannerState.DECODING_DELAY
+                        if self.scannerType == "Active":
+                            if self.backoff == "BTBackoff" and self.backoffCount > 0:
+                                self.backoffCount -= 1
+                            if self.backoff == None or self.backoff == "BTBackoff" and self.backoffCount == 0:
+                                self.state = ScannerState.T_IFS_DELAY1
+                                self.adv_id = self.receiving_packet.src_id
+                            if self.backoff == "BTBackoff" and self.backoffCount > 0:
+                                self.state = ScannerState.DECODING_DELAY
                         self.receiving_packet = None
                         self.number_of_received_adv += 1
 
