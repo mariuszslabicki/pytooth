@@ -15,7 +15,7 @@ def f(adv_no, sc_no, scannerType, iterationNumber, simulationLength, advertising
     network.addScanners(sc_no, scannerType, backoffType="BTBackoff")
     network.addAdvertisers(adv_no, advertisingInterval, dataInterval, stopAdvertising)
     start_time = time.time()
-    print(adv_no, sc_no, iterationNumber, simulationLength, advertisingInterval, stopAdvertising)
+    print(adv_no, sc_no, iterationNumber, simulationLength, scannerType, advertisingInterval, stopAdvertising)
     if not(stopAdvertising is True and scannerType == "Passive"):
         network.evaluateNetwork(simulationLength)
     execution_time = time.time() - start_time
@@ -81,7 +81,7 @@ if __name__ == '__main__':
     parameters = config["BTNETWORK"]
     adv_list = ast.literal_eval(parameters["NoOfAdvertisers"])
     scanner_list = ast.literal_eval(parameters["NoOfScanners"])
-    scanner_type = parameters["ScannerType"]
+    scanner_type = parameters["ScannerType"].split()
     no_of_iterations = ast.literal_eval(parameters["NoOfIterations"])
     no_of_iterations = range(no_of_iterations)
     advertising_interval_list = ast.literal_eval(parameters["AdvertisingInterval"])
@@ -93,9 +93,6 @@ if __name__ == '__main__':
 
     if type(scanner_list) is int:
         scanner_list = [scanner_list]
-
-    if type(scanner_type) is str:
-        scanner_type = [scanner_type]
 
     if type(advertising_interval_list) is int:
         advertising_interval_list = [advertising_interval_list]
