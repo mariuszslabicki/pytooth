@@ -61,7 +61,7 @@ class Advertiser(object):
     def main_loop(self):
         while True:
             if self.state == AdvState.BEGIN_FSM:
-                random_delay = random.randint(0, self.advertising_interval)
+                random_delay = random.randint(0, self.data_interval)
                 yield self.env.timeout(random_delay)
                 self.end_of_data_interval = self.env.now + self.data_interval
                 self.end_of_idle = self.env.now + self.advertising_interval
