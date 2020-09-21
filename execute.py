@@ -16,8 +16,11 @@ def f(adv_no, sc_no, scannerType, iterationNumber, simulationLength, advertising
     network.addAdvertisers(adv_no, advertisingInterval, dataInterval, stopAdvertising)
     start_time = time.time()
     print(adv_no, sc_no, iterationNumber, simulationLength, scannerType, advertisingInterval, stopAdvertising)
-    if not(stopAdvertising is True and scannerType == "Passive"):
-        network.evaluateNetwork(simulationLength)
+    if scannerType == "Active" and stopAdvertising is False:
+        return "Skip: Scanner active and stop advertising is False"
+    if scannerType == "Passive" and stopAdvertising is True:
+        return "Skip: Scanner passive and stop advertising is True"
+    network.evaluateNetwork(simulationLength)
     execution_time = time.time() - start_time
 
     row = {}
