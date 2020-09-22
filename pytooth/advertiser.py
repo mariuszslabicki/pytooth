@@ -138,10 +138,6 @@ class Advertiser(object):
                     self.request_received = True
                     if self.stop_advertising is True:
                         self.number_of_sent_data_values += 1
-                    if self.receiving_packet.copy_id+1 not in self.when_delivered_data:
-                        self.when_delivered_data[self.receiving_packet.copy_id+1] = 1
-                    else:
-                        self.when_delivered_data[self.receiving_packet.copy_id+1] += 1
                     self.number_of_received_req += 1
                     self.state = AdvState.RADIO_SWITCH_DELAY2
                     self.scanner_id = self.receiving_packet.src_id

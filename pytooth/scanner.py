@@ -113,18 +113,28 @@ class Scanner(object):
                     if self.receiving_packet.type == packet.PktType.ADV_SCAN_IND:
                         self.recv_copy_id = self.receiving_packet.copy_id
                         self.recv_seq_no = self.receiving_packet.seq_no
+                        if self.receiving_packet.copy_id+1 not in self.network.advertisers[self.receiving_packet.src_id].when_delivered_data:
+                                self.network.advertisers[self.receiving_packet.src_id].when_delivered_data[self.receiving_packet.copy_id+1] = 1
+                        else:
+                            self.network.advertisers[self.receiving_packet.src_id].when_delivered_data[self.receiving_packet.copy_id+1] += 1
                         if self.receiving_packet.src_id not in self.received_adv_data_values:
                             self.received_adv_data_values[self.receiving_packet.src_id] = 1
                             self.received_adv_packets[self.receiving_packet.src_id] = 1
                             self.last_seen_adv_data[self.receiving_packet.src_id] = self.recv_seq_no
                             self.network.advertisers[self.receiving_packet.src_id].number_of_delivered_adv_events = 1
                             self.network.advertisers[self.receiving_packet.src_id].number_of_delivered_data_values = 1
+                            # self.network.advertisers[self.receiving_packet.src_id].when_delivered_data = self.receiving_packet.seq_no
+                            # if self.receiving_packet.copy_id+1 not in self.network.advertisers[self.receiving_packet.src_id].when_delivered_data:
+                            #     self.network.advertisers[self.receiving_packet.src_id].when_delivered_data[self.receiving_packet.copy_id+1] = 1
+                            # else:
+                            #     self.network.advertisers[self.receiving_packet.src_id].when_delivered_data[self.receiving_packet.copy_id+1] += 1
                         else:
                             self.received_adv_packets[self.receiving_packet.src_id] += 1
                             self.network.advertisers[self.receiving_packet.src_id].number_of_delivered_adv_events += 1
                             if self.last_seen_adv_data[self.receiving_packet.src_id] != self.recv_seq_no:
                                 self.last_seen_adv_data[self.receiving_packet.src_id] = self.recv_seq_no
                                 self.network.advertisers[self.receiving_packet.src_id].number_of_delivered_data_values += 1
+
                         self.state = ScannerState.DECODING_DELAY
                         if self.scannerType == "Active":
                             if self.backoff == "BTBackoff" and self.backoffCount > 0:
