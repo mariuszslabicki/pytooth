@@ -112,5 +112,4 @@ if __name__ == '__main__':
         results = pool.starmap(f, sim_parameters)
 
     with open(output_filename, 'w') as f:
-        json.dump(dict(parameters), f, ensure_ascii=False, indent=4)
         json.dump(results, f, ensure_ascii=False, indent=4)
