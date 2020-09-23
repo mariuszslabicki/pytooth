@@ -96,7 +96,7 @@ def create_dir(tup):
     return path
 
 
-def write_ini(path, tup):
+def write_ini(path, no_of_cores, tup):
     f_name = os.path.join(path, "network.ini")
     cfgfile = open(f_name, 'w')
     write_config = configparser.ConfigParser()
@@ -108,6 +108,9 @@ def write_ini(path, tup):
     write_config.set("BTNETWORK","SimulationLength", str(tup[4]))
     write_config.set("BTNETWORK","AdvertisingInterval", str(tup[5]))
     write_config.set("BTNETWORK","DataInterval", str(tup[6]))
+    write_config.set("BTNETWORK","StopAdvertising", str(tup[7]))
+    write_config.set("BTNETWORK","NoOfCores", str(no_of_cores))
+    
     #write_config.set("BTNETWORK","OutputFilename","Jane")
 
     write_config.write(cfgfile)
@@ -123,6 +126,7 @@ def prepare_config(main_ini_file_name):
     scanner_type = parameters["ScannerType"].split()
     no_of_iterations = ast.literal_eval(parameters["NoOfIterations"])
     no_of_iterations = range(no_of_iterations)
+    no_of_cores = ast.literal_eval(parameters["NoOfCores"])
     advertising_interval_list = ast.literal_eval(parameters["AdvertisingInterval"])
     data_interval_list = ast.literal_eval(parameters["DataInterval"])
     simulationLength = ast.literal_eval(parameters["SimulationLength"])
@@ -143,15 +147,16 @@ def prepare_config(main_ini_file_name):
 
     sim_parameters = product(adv_list, scanner_list, scanner_type, no_of_iterations, simulationLength, advertising_interval_list, data_interval_list, stop_advertising)
     
-    return sim_parameters
+    return sim_parameters, no_of_cores
 
 
-def prepare_simulation(main_ini_file_name="simulations/art_bullet1.ini"):
-    sim_parameters = prepare_config(main_ini_file_name)
+def prepare_simulation(main_ini_file_name):
+#def prepare_simulation(main_ini_file_name="simulations/art_bullet1.ini"):
+    sim_parameters, no_of_cores = prepare_config(main_ini_file_name)
 
     for i in sim_parameters: 
         path = create_dir(i)
-        write_ini(path, i)
+        write_ini(path, no_of_cores, i)
         print(path)
         print("DONE")
 
