@@ -6,8 +6,6 @@ import ast
 import pytooth.btnetwork
 import fire
 
-ini_file_name = ("test/150_1_Pasive_8_1000000000_250000_10000000_False/network.ini")
-
 def get_setup(ini_file_name):
     config = configparser.ConfigParser()
     config.read(ini_file_name)
