@@ -9,7 +9,6 @@ import os
 import fire
 
 def f(adv_no, sc_no, scannerType, iterationNumber, simulationLength, advertisingInterval, dataInterval, stopAdvertising):
-    
     network = pytooth.btnetwork.BTNetwork()
     network.addScanners(sc_no, scannerType, backoffType="BTBackoff")
     network.addAdvertisers(adv_no, advertisingInterval, dataInterval, stopAdvertising)
@@ -21,7 +20,6 @@ def f(adv_no, sc_no, scannerType, iterationNumber, simulationLength, advertising
         return "Skip: Scanner passive and stop advertising is True"
     network.evaluateNetwork(simulationLength)
     execution_time = time.time() - start_time
-
     row = {}
     row["numberOfAdvertisers"] = adv_no
     row["numberOfScanners"] = sc_no
@@ -32,12 +30,9 @@ def f(adv_no, sc_no, scannerType, iterationNumber, simulationLength, advertising
     row["dataInterval"] = dataInterval//1000
     row["stopAdvertising"] = stopAdvertising
     row["executionTime"] = execution_time
-
     if stopAdvertising is True and scannerType == "Passive":
         return row
-
     advertisers = []
-
     for advertiser in network.advertisers:
         new_dict = {}
         new_dict["advertiser_id"] = advertiser.id
@@ -52,26 +47,19 @@ def f(adv_no, sc_no, scannerType, iterationNumber, simulationLength, advertising
         new_dict["number_of_delivered_resp"] = advertiser.number_of_delivered_resp
         if stopAdvertising is True:
             new_dict["when_delivered_data"] = advertiser.when_delivered_data
-
         advertisers.append(new_dict)
-
     row["advertisers"] = advertisers
-
     scanners = []
-
     for scanner in network.scanners:
         new_dict = {}
         new_dict["scanner_id"] = scanner.id
         new_dict["backoff_upperlimit_history"] = scanner.upperLimitHistory
-        
         scanners.append(new_dict)
-
     row["scanners"] = scanners
-
     return row
 
 
-def tupe_to_str(tup):
+def tuple_to_str(tup):
     tup = [str(x) for x in tup]
     s = '_'.join(tup)
     return s
@@ -79,14 +67,13 @@ def tupe_to_str(tup):
 
 def get_dir_name(tup):
     #tup = next(sim_parameters)
-    s = tupe_to_str(tup)
+    s = tuple_to_str(tup)
     return s
 
 
 def create_dir(tup):
     path = os.getcwd()
     path = os.path.join(path, get_dir_name(tup))
-    
     try:
       os.mkdir(path)
     except OSError:
@@ -110,9 +97,7 @@ def write_ini(path, no_of_cores, tup):
     write_config.set("BTNETWORK","DataInterval", str(tup[6]))
     write_config.set("BTNETWORK","StopAdvertising", str(tup[7]))
     write_config.set("BTNETWORK","NoOfCores", str(no_of_cores))
-    
     #write_config.set("BTNETWORK","OutputFilename","Jane")
-
     write_config.write(cfgfile)
     cfgfile.close()
 
@@ -132,21 +117,15 @@ def prepare_config(main_ini_file_name):
     simulationLength = ast.literal_eval(parameters["SimulationLength"])
     stop_advertising = [True, False]
     output_filename = parameters["OutputFilename"]
-
     if type(scanner_list) is int:
         scanner_list = [scanner_list]
-
     if type(advertising_interval_list) is int:
         advertising_interval_list = [advertising_interval_list]
-
     if type(data_interval_list) is int:
         data_interval_list = [data_interval_list]
-
     if type(simulationLength) is int:
         simulationLength = [simulationLength]
-
     sim_parameters = product(adv_list, scanner_list, scanner_type, no_of_iterations, simulationLength, advertising_interval_list, data_interval_list, stop_advertising)
-    
     return sim_parameters, no_of_cores
 
 
@@ -159,9 +138,6 @@ def prepare_simulation(main_ini_file_name):
         write_ini(path, no_of_cores, i)
         print(path)
         print("DONE")
-
-
-
 
 
 if __name__ == '__main__':
