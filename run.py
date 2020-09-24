@@ -4,7 +4,7 @@
 import configparser
 import ast
 import json
-import pytooth.btnetwork
+from pytooth import btnetwork
 import fire
 
 def get_setup(ini_file_name):
@@ -12,22 +12,22 @@ def get_setup(ini_file_name):
     config.read(ini_file_name)
     parameters = config["BTNETWORK"]
     setup = {
-        "adv_list" : ast.literal_eval(parameters["NoOfAdvertisers"]),
-        "no_of_scanners" : ast.literal_eval(parameters["NoOfScanners"]),
-        "scanner_type" : parameters["ScannerType"].split(),
-        "advertising_interval" : ast.literal_eval(parameters["AdvertisingInterval"]),
-        "data_interval" : ast.literal_eval(parameters["DataInterval"]),
-        "simulation_length" : ast.literal_eval(parameters["SimulationLength"]),
-        "stop_advertising" : ast.literal_eval(parameters["StopAdvertising"]),
-        "number_of_cores" : ast.literal_eval(parameters["NoOfCores"])
+        "no_of_advertisers" : ast.literal_eval(parameters["noofadvertisers"]),
+        "no_of_scanners" : ast.literal_eval(parameters["noofscanners"]),
+        "scanner_type" : parameters["scannertype"].split(),
+        "advertising_interval" : ast.literal_eval(parameters["advertisinginterval"]),
+        "data_interval" : ast.literal_eval(parameters["datainterval"]),
+        "simulation_length" : ast.literal_eval(parameters["simulationlength"]),
+        "stop_advertising" : ast.literal_eval(parameters["stopadvertising"]),
+        "no_of_cores" : ast.literal_eval(parameters["NoOfCores"])
     }
     return setup
 
 def run_simulation(ini_file_name):
     s = get_setup(ini_file_name)
-    network = pytooth.btnetwork.BTNetwork()
-    network.addScanners(s["number_of_cores"], s["scanner_type"], backoffType="BTBackoff")
-    network.addAdvertisers(s["no_of_scanners"], s["advertising_interval"], s["data_interval"], s["stop_advertising"])
+    network = btnetwork.BTNetwork()
+    network.addScanners(s["no_of_scanners"], s["scanner_type"], backoffType="BTBackoff")
+    network.addAdvertisers(s["no_of_advertisers"], s["advertising_interval"], s["data_interval"], s["stop_advertising"])
     network.evaluateNetwork(s["simulation_length"])
 
     row = {}
