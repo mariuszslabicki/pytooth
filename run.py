@@ -26,7 +26,7 @@ def get_setup(ini_file_name):
 def run_simulation(ini_file_name):
     s = get_setup(ini_file_name)
     network = btnetwork.BTNetwork()
-    network.addScanners(s["no_of_scanners"], s["scanner_type"], backoffType="BTBackoff")
+    network.addScanners(s["no_of_scanners"], s["scanner_type"][0], backoffType="BTBackoff")
     network.addAdvertisers(s["no_of_advertisers"], s["advertising_interval"], s["data_interval"], s["stop_advertising"])
     network.evaluateNetwork(s["simulation_length"])
 
